@@ -1,0 +1,52 @@
+const JobCard = ({
+  job,
+  onApply,
+  applying
+}) => {
+  return (
+    <article className="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col">
+      <div className="flex-1">
+        <h2 className="text-xl font-semibold">
+          {job.title}
+        </h2>
+
+        <p className="text-slate-500 mt-1">
+          {job.company?.name}
+        </p>
+
+        <p className="mt-4 text-slate-700 line-clamp-3">
+          {job.description}
+        </p>
+
+        <div className="mt-5 text-sm space-y-2">
+          <p>
+            <strong>Location:</strong>{" "}
+            {job.location || "Not specified"}
+          </p>
+
+          <p>
+            <strong>Minimum CGPA:</strong>{" "}
+            {job.minimumCGPA ?? 0}
+          </p>
+
+          <p>
+            <strong>Skills:</strong>{" "}
+            {job.requiredSkills?.length
+              ? job.requiredSkills.join(", ")
+              : "Not specified"}
+          </p>
+        </div>
+      </div>
+
+      <button
+        disabled={applying}
+        onClick={() => onApply(job._id)}
+        className="mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg transition"
+      >
+        {applying ? "Applying..." : "Apply Now"}
+      </button>
+    </article>
+  );
+};
+
+export default JobCard;

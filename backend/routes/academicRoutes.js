@@ -1,0 +1,19 @@
+const express = require("express");
+const protect = require("../middleware/authMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const csvUpload = require("../middleware/csvUploadMiddleware");
+const {
+  importAcademicRecords
+} = require("../controllers/academicController");
+
+const router = express.Router();
+
+router.post(
+  "/import",
+  protect,
+  authorize("admin"),
+  csvUpload.single("file"),
+  importAcademicRecords
+);
+
+module.exports = router;
