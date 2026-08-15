@@ -24,7 +24,7 @@ const Navbar = () => {
     <nav className="bg-slate-900 text-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
         <Link to={dashboardPath} className="font-bold text-lg">
-          Placement Portal
+          Placement Portal By Avi Keshari
         </Link>
 
         <div className="hidden md:flex items-center gap-5">
