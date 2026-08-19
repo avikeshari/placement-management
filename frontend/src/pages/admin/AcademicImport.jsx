@@ -54,7 +54,7 @@ const AcademicImport = () => {
 
       <div className="bg-white border rounded-2xl p-6 mt-6 max-w-xl">
         <p className="text-slate-500">
-          Import mock academic records from a CSV file.
+          Import Student Data From CSV File
         </p>
 
         <input

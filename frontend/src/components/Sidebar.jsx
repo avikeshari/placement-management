@@ -4,15 +4,19 @@ import {
   FileText,
   CalendarDays,
   UserRound,
-  Upload
+  Upload,
+  Users,
+  Building2,
+  BarChart3,
+  FileSpreadsheet,
+  UserRoundCog
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Sidebar = () => {
-  const { user } =
-    useAuth();
+  const { user } = useAuth();
 
   const menus = {
     student: [
@@ -42,7 +46,6 @@ const Sidebar = () => {
         icon: CalendarDays
       }
     ],
-
     company: [
       {
         label: "Dashboard",
@@ -70,61 +73,49 @@ const Sidebar = () => {
         icon: CalendarDays
       }
     ],
-
     admin: [
-      {
-        label: "Dashboard",
-        path: "/admin",
-        icon: LayoutDashboard
-      },
-      {
-        label: "Academic Import",
-        path: "/admin/academic-import",
-        icon: Upload
-      }
+      { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
+      { label: "Students", path: "/admin/students", icon: Users },
+      { label: "Companies", path: "/admin/companies", icon: Building2 },
+      { label: "Jobs", path: "/admin/jobs", icon: BriefcaseBusiness },
+      { label: "Applications", path: "/admin/applications", icon: FileText },
+      { label: "Interviews", path: "/admin/interviews", icon: CalendarDays },
+      { label: "Analytics", path: "/admin/analytics", icon: BarChart3 },
+      { label: "Academic Import", path: "/admin/academic-import", icon: Upload },
+      { label: "Reports", path: "/admin/reports", icon: FileSpreadsheet },
+      { label: "Profile", path: "/admin/profile", icon: UserRoundCog }
     ]
   };
 
-  const items =
-    menus[user?.role] || [];
+  const items = menus[user?.role] || [];
 
   return (
-    <aside className="w-full border-r bg-white md:min-h-[calc(100vh-4rem)] md:w-64">
-      <nav className="flex gap-1 overflow-x-auto p-3 md:flex-col">
-        {items.map(
-          ({
-            label,
-            path,
-            icon: Icon
-          }) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={
-                path ===
-                "/student" ||
-                path ===
-                "/company" ||
-                path ===
-                "/admin"
-              }
-              className={({
+    <aside className="bg-white border-r w-full md:w-64 md:min-h-[calc(100vh-4rem)]">
+      <nav className="flex md:flex-col overflow-x-auto gap-1 p-3">
+        {items.map(({ label, path, icon: Icon }) => (
+          <NavLink
+            key={path}
+            to={path}
+            end={
+              path === "/student" ||
+              path === "/company" ||
+              path === "/admin"
+            }
+            className={({ isActive }) =>
+              `
+              flex items-center gap-3 whitespace-nowrap px-4 py-3 rounded-lg transition
+              ${
                 isActive
-              }) =>
-                `
-                flex items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 transition
-                ${isActive
-                  ? "bg-blue-50 font-medium text-blue-700"
+                  ? "bg-blue-50 text-blue-700 font-medium"
                   : "text-slate-600 hover:bg-slate-50"
-                }
-                `
               }
-            >
-              <Icon size={18} />
-              {label}
-            </NavLink>
-          )
-        )}
+              `
+            }
+          >
+            <Icon size={18} />
+            {label}
+          </NavLink>
+        ))}
       </nav>
     </aside>
   );

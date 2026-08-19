@@ -12,7 +12,8 @@ import {
   UserRound,
   Save,
   ExternalLink,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react";
 
 import api from "../../api/axios";
@@ -21,57 +22,68 @@ import ErrorState from "../../components/ErrorState";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Profile = () => {
-  const [profile, setProfile] =
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [openingResume, setOpeningResume] = useState(false);
+  const [downloadingResume, setDownloadingResume] =
+    useState(false);
+  const [error, setError] = useState("");
+  const [resume, setResume] = useState(null);
+  const [academicRecord, setAcademicRecord] =
     useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const loadProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  const [saving, setSaving] =
-    useState(false);
+      /*
+       * Profile and academic data are loaded
+       * independently. An academic-record problem
+       * must never hide the student's profile/resume.
+       */
+      const profileResponse =
+        await api.get("/profile/me");
 
-  const [uploading, setUploading] =
-    useState(false);
+      setProfile(
+        profileResponse.data.profile
+      );
 
-  const [error, setError] =
-    useState("");
-
-  const [resume, setResume] =
-    useState(null);
-
-  const loadProfile =
-    useCallback(async () => {
       try {
-        setLoading(true);
-        setError("");
+        const academicResponse =
+          await api.get("/academic/me");
 
-        const response =
-          await api.get(
-            "/profile/me"
-          );
+        setAcademicRecord(
+          academicResponse.data.record ||
+            null
+        );
+      } catch (academicError) {
+        console.error(
+          "Academic record loading failed:",
+          academicError
+        );
 
-        setProfile(
-          response.data.profile
-        );
-      } catch (error) {
-        setError(
-          getErrorMessage(
-            error,
-            "Unable to load your profile."
-          )
-        );
-      } finally {
-        setLoading(false);
+        setAcademicRecord(null);
       }
-    }, []);
+    } catch (error) {
+      setError(
+        getErrorMessage(
+          error,
+          "Unable to load your profile."
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
-  const handleChange = (
-    event
-  ) => {
+  const handleChange = (event) => {
     const {
       name,
       value
@@ -83,100 +95,105 @@ const Profile = () => {
     }));
   };
 
-  const handleSaveProfile =
-    async (event) => {
-      event.preventDefault();
+  const handleSaveProfile = async (
+    event
+  ) => {
+    event.preventDefault();
 
-      try {
-        setSaving(true);
+    try {
+      setSaving(true);
 
-        const payload = {
-          phone:
-            profile.phone || "",
-          college:
-            profile.college || "",
-          course:
-            profile.course || "",
-          branch:
-            profile.branch || "",
-          graduationYear:
-            profile.graduationYear ||
-            "",
-          cgpa:
-            profile.cgpa || "",
-          skills:
-            Array.isArray(
-              profile.skills
-            )
-              ? profile.skills
-              : profile.skills || ""
-        };
+      const payload = {
+        phone: profile.phone || "",
+        college: profile.college || "",
+        course: profile.course || "",
+        branch: profile.branch || "",
+        graduationYear:
+          profile.graduationYear || "",
+        cgpa: profile.cgpa || "",
+        skills:
+          Array.isArray(profile.skills)
+            ? profile.skills
+            : profile.skills || ""
+      };
 
-        const response =
-          await api.put(
-            "/profile/me",
-            payload
-          );
-
-        setProfile(
-          response.data.profile
+      const response =
+        await api.put(
+          "/profile/me",
+          payload
         );
 
-        toast.success(
-          "Profile updated successfully"
-        );
-      } catch (error) {
-        toast.error(
-          getErrorMessage(
-            error,
-            "Unable to update profile."
-          )
-        );
-      } finally {
-        setSaving(false);
-      }
-    };
+      setProfile(
+        response.data.profile
+      );
 
-  const handleResumeChange =
-    (event) => {
-      const selectedFile =
-        event.target.files?.[0];
+      toast.success(
+        "Profile updated successfully"
+      );
+    } catch (error) {
+      toast.error(
+        getErrorMessage(
+          error,
+          "Unable to update profile."
+        )
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
-      if (!selectedFile) {
-        setResume(null);
-        return;
-      }
+  const handleResumeChange = (
+    event
+  ) => {
+    const selectedFile =
+      event.target.files?.[0];
 
-      const validExtension =
-        /\.(pdf|doc|docx)$/i.test(
-          selectedFile.name
-        );
+    if (!selectedFile) {
+      setResume(null);
+      return;
+    }
 
-      if (!validExtension) {
-        toast.error(
-          "Only PDF, DOC and DOCX files are allowed."
-        );
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
 
-        event.target.value = "";
-        setResume(null);
-        return;
-      }
+    const validExtension =
+      /\.(pdf|doc|docx)$/i.test(
+        selectedFile.name
+      );
 
-      if (
-        selectedFile.size >
-        5 * 1024 * 1024
-      ) {
-        toast.error(
-          "Resume must be smaller than 5 MB."
-        );
+    if (
+      !allowedTypes.includes(
+        selectedFile.type
+      ) &&
+      !validExtension
+    ) {
+      toast.error(
+        "Only PDF, DOC and DOCX files are allowed."
+      );
 
-        event.target.value = "";
-        setResume(null);
-        return;
-      }
+      event.target.value = "";
+      setResume(null);
+      return;
+    }
 
-      setResume(selectedFile);
-    };
+    if (
+      selectedFile.size >
+      5 * 1024 * 1024
+    ) {
+      toast.error(
+        "Resume must be smaller than 5 MB."
+      );
+
+      event.target.value = "";
+      setResume(null);
+      return;
+    }
+
+    setResume(selectedFile);
+  };
 
   const handleResumeUpload =
     async () => {
@@ -204,11 +221,13 @@ const Profile = () => {
             formData
           );
 
-        setProfile((previous) => ({
-          ...previous,
-          resume:
-            response.data.resume
-        }));
+        setProfile(
+          (previous) => ({
+            ...previous,
+            resume:
+              response.data.resume
+          })
+        );
 
         setResume(null);
 
@@ -236,23 +255,187 @@ const Profile = () => {
       }
     };
 
+  /*
+   * Fetch the resume through our backend.
+   *
+   * This avoids sending the student directly
+   * to a Cloudinary URL and keeps resume access
+   * behind authentication.
+   */
+  const fetchResumeBlob =
+    async (download = false) => {
+      const response =
+        await api.get(
+          `/profile/resume${
+            download
+              ? "?download=true"
+              : ""
+          }`,
+          {
+            responseType: "blob"
+          }
+        );
+
+      return response.data;
+    };
+
+  const handleResumeView =
+    async () => {
+      if (!profile.resume?.url) {
+        toast.error(
+          "No resume found."
+        );
+        return;
+      }
+
+      try {
+        setOpeningResume(true);
+
+        const blob =
+          await fetchResumeBlob(
+            false
+          );
+
+        const blobUrl =
+          window.URL.createObjectURL(
+            blob
+          );
+
+        const newWindow =
+          window.open(
+            blobUrl,
+            "_blank",
+            "noopener,noreferrer"
+          );
+
+        if (!newWindow) {
+          /*
+           * Popup blockers can prevent
+           * window.open. Give the user a
+           * fallback download instead.
+           */
+          const link =
+            document.createElement(
+              "a"
+            );
+
+          link.href = blobUrl;
+          link.download =
+            profile.resume
+              .originalName ||
+            "resume";
+
+          document.body.appendChild(
+            link
+          );
+
+          link.click();
+          link.remove();
+        }
+
+        /*
+         * Give the browser enough time to
+         * consume the blob before revoking it.
+         */
+        window.setTimeout(() => {
+          window.URL.revokeObjectURL(
+            blobUrl
+          );
+        }, 60000);
+      } catch (error) {
+        console.error(
+          "Resume view error:",
+          error
+        );
+
+        toast.error(
+          getErrorMessage(
+            error,
+            "Unable to open resume. Please re-upload it."
+          )
+        );
+      } finally {
+        setOpeningResume(false);
+      }
+    };
+
+  const handleResumeDownload =
+    async () => {
+      if (!profile.resume?.url) {
+        toast.error(
+          "No resume found."
+        );
+        return;
+      }
+
+      try {
+        setDownloadingResume(true);
+
+        const blob =
+          await fetchResumeBlob(
+            true
+          );
+
+        const blobUrl =
+          window.URL.createObjectURL(
+            blob
+          );
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+        link.href = blobUrl;
+        link.download =
+          profile.resume
+            .originalName ||
+          "resume";
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+
+        window.setTimeout(() => {
+          window.URL.revokeObjectURL(
+            blobUrl
+          );
+        }, 60000);
+      } catch (error) {
+        console.error(
+          "Resume download error:",
+          error
+        );
+
+        toast.error(
+          getErrorMessage(
+            error,
+            "Unable to download resume."
+          )
+        );
+      } finally {
+        setDownloadingResume(false);
+      }
+    };
+
   const handleResumeDelete =
     async () => {
       if (!profile.resume?.url) {
         toast.error(
-          "No resume is currently uploaded."
+          "No resume to delete."
         );
         return;
       }
 
       const confirmed =
         window.confirm(
-          "Delete your resume permanently?"
+          "Are you sure you want to delete your resume? This cannot be undone."
         );
 
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
 
       try {
         setUploading(true);
@@ -261,10 +444,12 @@ const Profile = () => {
           "/profile/resume"
         );
 
-        setProfile((previous) => ({
-          ...previous,
-          resume: null
-        }));
+        setProfile(
+          (previous) => ({
+            ...previous,
+            resume: undefined
+          })
+        );
 
         toast.success(
           "Resume deleted successfully"
@@ -285,12 +470,10 @@ const Profile = () => {
     async () => {
       const confirmed =
         window.confirm(
-          "Delete your profile and account permanently? Your resume, applications and interviews will also be removed. This action cannot be undone."
+          "Delete your account permanently? Your profile, applications, interviews and uploaded resume will be removed. This cannot be undone."
         );
 
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
 
       try {
         setSaving(true);
@@ -351,6 +534,64 @@ const Profile = () => {
 
   return (
     <section className="space-y-6">
+      {academicRecord && (
+        <section className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+          <h2 className="text-xl font-semibold text-blue-900">
+            Official Academic Information
+          </h2>
+
+          <p className="text-sm text-blue-700 mt-1">
+            Imported by the placement administrator.
+          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 text-sm">
+            <div>
+              <span className="text-slate-500">
+                Enrollment
+              </span>
+
+              <p className="font-semibold">
+                {academicRecord.enrollmentNumber ||
+                  "-"}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-slate-500">
+                Branch
+              </span>
+
+              <p className="font-semibold">
+                {academicRecord.branch ||
+                  "-"}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-slate-500">
+                CGPA
+              </span>
+
+              <p className="font-semibold">
+                {academicRecord.cgpa ??
+                  "-"}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-slate-500">
+                Backlogs
+              </span>
+
+              <p className="font-semibold">
+                {academicRecord.backlogs ??
+                  0}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div>
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 text-blue-700 p-3 rounded-xl">
@@ -370,9 +611,7 @@ const Profile = () => {
       </div>
 
       <form
-        onSubmit={
-          handleSaveProfile
-        }
+        onSubmit={handleSaveProfile}
         className="bg-white border rounded-2xl shadow-sm p-5 md:p-8"
       >
         <h2 className="text-xl font-semibold">
@@ -392,11 +631,7 @@ const Profile = () => {
             ],
             ["cgpa", "CGPA", "number"]
           ].map(
-            ([
-              name,
-              label,
-              type
-            ]) => (
+            ([name, label, type]) => (
               <div key={name}>
                 <label
                   htmlFor={name}
@@ -418,7 +653,7 @@ const Profile = () => {
                     name === "cgpa"
                       ? "0"
                       : name ===
-                        "graduationYear"
+                          "graduationYear"
                         ? "2000"
                         : undefined
                   }
@@ -426,7 +661,7 @@ const Profile = () => {
                     name === "cgpa"
                       ? "10"
                       : name ===
-                        "graduationYear"
+                          "graduationYear"
                         ? "2100"
                         : undefined
                   }
@@ -459,10 +694,10 @@ const Profile = () => {
                   profile.skills
                 )
                   ? profile.skills.join(
-                    ", "
-                  )
+                      ", "
+                    )
                   : profile.skills ||
-                  ""
+                    ""
               }
               onChange={
                 handleChange
@@ -513,32 +748,62 @@ const Profile = () => {
           <div className="border border-green-200 bg-green-50 rounded-xl p-4 mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-semibold text-green-900">
+                <p className="font-medium text-green-900">
                   Current Resume
                 </p>
 
                 <p className="text-sm text-green-700 truncate mt-1">
-                  {profile.resume
-                    .originalName ||
+                  {profile.resume.originalName ||
                     "Uploaded resume"}
                 </p>
+
+                {profile.resume.format && (
+                  <p className="text-xs text-green-600 mt-1 uppercase">
+                    {profile.resume.format}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                <a
-                  href={
-                    profile.resume
-                      .url
+                <button
+                  type="button"
+                  onClick={
+                    handleResumeView
                   }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 bg-white border border-green-300 text-green-700 px-4 py-2.5 rounded-lg font-medium"
+                  disabled={
+                    openingResume ||
+                    downloadingResume
+                  }
+                  className="inline-flex items-center justify-center gap-2 bg-white border border-green-300 text-green-700 px-4 py-2 rounded-lg disabled:opacity-60"
                 >
                   <ExternalLink
                     size={17}
                   />
-                  View Resume
-                </a>
+
+                  {openingResume
+                    ? "Opening..."
+                    : "View Resume"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    handleResumeDownload
+                  }
+                  disabled={
+                    openingResume ||
+                    downloadingResume
+                  }
+                  className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-4 py-2 rounded-lg"
+                >
+                  <Download
+                    size={17}
+                  />
+
+                  {downloadingResume
+                    ? "Downloading..."
+                    : "Download Resume"}
+                </button>
 
                 <button
                   type="button"
@@ -546,9 +811,11 @@ const Profile = () => {
                     handleResumeDelete
                   }
                   disabled={
-                    uploading
+                    uploading ||
+                    openingResume ||
+                    downloadingResume
                   }
-                  className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-400 text-white px-4 py-2.5 rounded-lg font-semibold"
+                  className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-400 text-white px-4 py-2 rounded-lg"
                 >
                   <Trash2
                     size={17}
@@ -563,28 +830,13 @@ const Profile = () => {
           </div>
         ) : (
           <div className="border border-amber-200 bg-amber-50 rounded-xl p-4 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p className="font-semibold text-amber-900">
-                  No resume uploaded
-                </p>
+            <p className="font-medium text-amber-900">
+              No resume uploaded
+            </p>
 
-                <p className="text-sm text-amber-700 mt-1">
-                  Upload a resume before applying for jobs.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center justify-center gap-2 bg-slate-300 text-slate-500 px-4 py-2.5 rounded-lg cursor-not-allowed"
-              >
-                <Trash2
-                  size={17}
-                />
-                Delete Resume
-              </button>
-            </div>
+            <p className="text-sm text-amber-700 mt-1">
+              Upload a resume before applying for jobs.
+            </p>
           </div>
         )}
 
@@ -630,7 +882,9 @@ const Profile = () => {
                 }
                 className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg"
               >
-                <Upload size={18} />
+                <Upload
+                  size={18}
+                />
 
                 {uploading
                   ? "Uploading..."
@@ -661,29 +915,18 @@ const Profile = () => {
         </div>
       </section>
 
-      <section className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 md:p-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <section className="bg-white border border-red-200 rounded-2xl shadow-sm p-5 md:p-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 text-red-700 p-3 rounded-xl">
-                <Trash2 size={22} />
-              </div>
+            <h2 className="text-xl font-semibold text-red-700">
+              Delete Account
+            </h2>
 
-              <div>
-                <h2 className="text-xl font-bold text-red-700">
-                  Delete Profile & Account
-                </h2>
-
-                <p className="text-sm text-red-600 mt-1">
-                  Permanently remove your profile, resume,
-                  applications and interviews.
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-600 mt-4 max-w-2xl">
-              This action permanently deletes your student
-              account and associated data. It cannot be undone.
+            <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+              Permanently delete your account,
+              profile, applications, interviews
+              and uploaded resume. This action
+              cannot be undone.
             </p>
           </div>
 
@@ -695,13 +938,13 @@ const Profile = () => {
             disabled={
               saving || uploading
             }
-            className="shrink-0 inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-400 text-white px-6 py-3 rounded-lg font-semibold"
+            className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg font-medium"
           >
             <Trash2 size={18} />
 
             {saving
               ? "Deleting..."
-              : "Delete Profile & Account"}
+              : "Delete Account"}
           </button>
         </div>
       </section>

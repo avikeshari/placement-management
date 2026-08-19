@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../api/axios";
 import toast from "react-hot-toast";
-
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000/api";
 
 const initialForm = {
   title: "",
@@ -21,17 +17,11 @@ const initialForm = {
 export default function PostJob() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] =
-    useState(initialForm);
-
-  const [loading, setLoading] =
-    useState(false);
+  const [formData, setFormData] = useState(initialForm);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const {
-      name,
-      value
-    } = e.target;
+    const { name, value } = e.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -39,116 +29,69 @@ export default function PostJob() {
     }));
   };
 
-  const handleSubmit = async (
-    e
-  ) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (loading) return;
 
-    const title =
-      formData.title.trim();
+    const title = formData.title.trim();
+    const company = formData.company.trim();
+    const location = formData.location.trim();
+    const description = formData.description.trim();
+    const skills = formData.skills
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
 
-    const company =
-      formData.company.trim();
-
-    const location =
-      formData.location.trim();
-
-    const description =
-      formData.description.trim();
-
-    const skills =
-      formData.skills
-        .split(",")
-        .map((skill) =>
-          skill.trim()
-        )
-        .filter(Boolean);
-
+    // Validate text fields
     if (!title) {
-      toast.error(
-        "Job title is required"
-      );
+      toast.error("Job title is required");
       return;
     }
 
     if (!company) {
-      toast.error(
-        "Company name is required"
-      );
+      toast.error("Company name is required");
       return;
     }
 
     if (!location) {
-      toast.error(
-        "Location is required"
-      );
+      toast.error("Location is required");
       return;
     }
 
     if (!description) {
-      toast.error(
-        "Job description is required"
-      );
+      toast.error("Job description is required");
       return;
     }
 
     if (skills.length === 0) {
-      toast.error(
-        "At least one required skill is required"
-      );
+      toast.error("At least one skill is required");
       return;
     }
 
-    const salary = Number(
-      formData.salary
-    );
+    // Validate salary
+    const salary = Number(formData.salary);
 
-    if (
-      formData.salary === "" ||
-      !Number.isFinite(salary) ||
-      salary <= 0
-    ) {
-      toast.error(
-        "Enter a valid salary"
-      );
+    if (!formData.salary || !Number.isFinite(salary) || salary <= 0) {
+      toast.error("Enter a valid salary");
       return;
     }
 
-    const minimumCGPA =
-      Number(formData.minimumCGPA);
+    // Validate minimum CGPA
+    const minimumCGPA = Number(formData.minimumCGPA);
 
     if (
       formData.minimumCGPA === "" ||
-      !Number.isFinite(
-        minimumCGPA
-      ) ||
+      !Number.isFinite(minimumCGPA) ||
       minimumCGPA < 0 ||
       minimumCGPA > 10
     ) {
-      toast.error(
-        "Enter a valid minimum CGPA between 0 and 10"
-      );
+      toast.error("Enter a valid minimum CGPA between 0 and 10");
       return;
     }
 
     try {
       setLoading(true);
-
-      const token =
-        localStorage.getItem(
-          "token"
-        );
-
-      if (!token) {
-        toast.error(
-          "Please login again"
-        );
-
-        navigate("/login");
-        return;
-      }
 
       const payload = {
         title,
@@ -157,76 +100,44 @@ export default function PostJob() {
         salary,
         minimumCGPA,
         description,
-
-        // IMPORTANT:
-        // Backend expects requiredSkills.
         requiredSkills: skills
       };
 
+      // Only send deadline when one has actually been selected.
       if (formData.deadline) {
-        payload.deadline =
-          formData.deadline;
+        payload.deadline = formData.deadline;
       }
 
-      const response =
-        await axios.post(
-          `${API_URL}/jobs`,
-          payload,
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-              "Content-Type":
-                "application/json"
-            }
-          }
-        );
+      const response = await api.post(
+        "/jobs",
+        payload
+      );
 
-      if (
-        response.data?.success ===
-        false
-      ) {
+      if (response.data?.success === false) {
         throw new Error(
-          response.data?.message ||
-          "Failed to publish job"
+          response.data?.message || "Failed to publish job"
         );
       }
 
       toast.success(
-        response.data?.message ||
-        "Job published successfully"
+        response.data?.message || "Job published successfully"
       );
 
       setFormData(initialForm);
 
-      navigate(
-        "/company/jobs"
-      );
+      navigate("/company/jobs");
     } catch (error) {
-      console.error(
-        "Publish job error:",
-        error
-      );
+      console.error("Publish job error:", error);
 
-      if (
-        error.response?.status ===
-        401
-      ) {
-        localStorage.removeItem(
-          "token"
-        );
-
-        toast.error(
-          "Session expired. Please login again"
-        );
-
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        toast.error("Session expired. Please login again");
         navigate("/login");
         return;
       }
 
       toast.error(
-        error.response?.data
-          ?.message ||
+        error.response?.data?.message ||
         error.message ||
         "Failed to publish job"
       );
@@ -244,8 +155,7 @@ export default function PostJob() {
           </h1>
 
           <p className="mt-2 text-gray-600">
-            Create a new job opening
-            for students.
+            Create a new job opening for students.
           </p>
         </div>
 
@@ -254,6 +164,7 @@ export default function PostJob() {
           className="rounded-xl bg-white p-6 shadow-sm"
         >
           <div className="grid gap-6 md:grid-cols-2">
+
             {/* Job Title */}
             <div className="md:col-span-2">
               <label
@@ -268,9 +179,7 @@ export default function PostJob() {
                 name="title"
                 type="text"
                 value={formData.title}
-                onChange={
-                  handleChange
-                }
+                onChange={handleChange}
                 placeholder="e.g. Software Developer"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -290,12 +199,8 @@ export default function PostJob() {
                 id="company"
                 name="company"
                 type="text"
-                value={
-                  formData.company
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.company}
+                onChange={handleChange}
                 placeholder="e.g. ABC Technologies"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -315,12 +220,8 @@ export default function PostJob() {
                 id="location"
                 name="location"
                 type="text"
-                value={
-                  formData.location
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.location}
+                onChange={handleChange}
                 placeholder="e.g. Bangalore / Remote"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -342,20 +243,15 @@ export default function PostJob() {
                 type="number"
                 min="0"
                 step="0.01"
-                value={
-                  formData.salary
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.salary}
+                onChange={handleChange}
                 placeholder="e.g. 800000"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
 
               <p className="mt-1 text-xs text-gray-500">
-                Enter the annual salary
-                as a number, e.g. 800000.
+                Enter the annual salary as a number, e.g. 800000.
               </p>
             </div>
 
@@ -375,20 +271,15 @@ export default function PostJob() {
                 min="0"
                 max="10"
                 step="0.01"
-                value={
-                  formData.minimumCGPA
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.minimumCGPA}
+                onChange={handleChange}
                 placeholder="e.g. 7.5"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
 
               <p className="mt-1 text-xs text-gray-500">
-                Enter a value between 0
-                and 10.
+                Enter a value between 0 and 10.
               </p>
             </div>
 
@@ -405,12 +296,8 @@ export default function PostJob() {
                 id="deadline"
                 name="deadline"
                 type="date"
-                value={
-                  formData.deadline
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.deadline}
+                onChange={handleChange}
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
@@ -429,20 +316,15 @@ export default function PostJob() {
                 id="skills"
                 name="skills"
                 type="text"
-                value={
-                  formData.skills
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.skills}
+                onChange={handleChange}
                 placeholder="React, Node.js, MongoDB, JavaScript"
                 disabled={loading}
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
 
               <p className="mt-1 text-xs text-gray-500">
-                Separate skills with
-                commas.
+                Separate skills with commas.
               </p>
             </div>
 
@@ -459,12 +341,8 @@ export default function PostJob() {
                 id="description"
                 name="description"
                 rows={6}
-                value={
-                  formData.description
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.description}
+                onChange={handleChange}
                 placeholder="Describe the role, responsibilities and requirements..."
                 disabled={loading}
                 className="w-full resize-y rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -476,11 +354,7 @@ export default function PostJob() {
           <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  "/company/jobs"
-                )
-              }
+              onClick={() => navigate("/company/jobs")}
               disabled={loading}
               className="rounded-lg border border-gray-300 px-6 py-3 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
@@ -492,9 +366,7 @@ export default function PostJob() {
               disabled={loading}
               className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading
-                ? "Publishing..."
-                : "Publish Job"}
+              {loading ? "Publishing..." : "Publish Job"}
             </button>
           </div>
         </form>

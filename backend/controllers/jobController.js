@@ -2,37 +2,34 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const Interview = require("../models/Interview");
 
-exports.getJobs = async (
-  req,
-  res
-) => {
+exports.getJobs = async (req, res) => {
   try {
-    const jobs =
-      await Job.find({
-        status: "open"
-      })
-        .populate(
-          "company",
-          "name email"
-        )
-        .sort({
-          createdAt: -1
-        });
+    const { q, location, minSalary, maxSalary, minCGPA, skill } = req.query;
+    const filter = { status: "open" };
 
-    return res.json({
-      success: true,
-      jobs
-    });
+    if (q?.trim()) {
+      const regex = new RegExp(q.trim(), "i");
+      filter.$or = [
+        { title: regex },
+        { description: regex },
+        { requiredSkills: regex }
+      ];
+    }
+
+    if (location?.trim()) filter.location = new RegExp(location.trim(), "i");
+    if (minSalary !== undefined && minSalary !== "") filter.salary = { ...(filter.salary || {}), $gte: Number(minSalary) };
+    if (maxSalary !== undefined && maxSalary !== "") filter.salary = { ...(filter.salary || {}), $lte: Number(maxSalary) };
+    if (minCGPA !== undefined && minCGPA !== "") filter.minimumCGPA = { $lte: Number(minCGPA) };
+    if (skill?.trim()) filter.requiredSkills = new RegExp(skill.trim(), "i");
+
+    const jobs = await Job.find(filter)
+      .populate("company", "name email")
+      .sort({ createdAt: -1 });
+
+    return res.json({ success: true, jobs });
   } catch (error) {
-    console.error(
-      "Get jobs error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    console.error("Get jobs error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -85,15 +82,13 @@ exports.createJob = async (
       salary,
       minimumCGPA,
       requiredSkills,
-      skills,
       deadline
     } = req.body;
 
     if (!title?.trim()) {
       return res.status(400).json({
         success: false,
-        message:
-          "Job title is required"
+        message: "Job title is required"
       });
     }
 
@@ -119,8 +114,7 @@ exports.createJob = async (
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Enter a valid salary"
+        message: "Enter a valid salary"
       });
     }
 
@@ -144,29 +138,16 @@ exports.createJob = async (
       });
     }
 
-    /*
-     * Accept requiredSkills as the
-     * preferred field and skills as
-     * a backward-compatible fallback.
-     */
-    const incomingSkills =
-      requiredSkills !==
-        undefined
-        ? requiredSkills
-        : skills;
-
     const normalizedSkills =
-      Array.isArray(
-        incomingSkills
-      )
-        ? incomingSkills
+      Array.isArray(requiredSkills)
+        ? requiredSkills
           .map((skill) =>
             String(skill).trim()
           )
           .filter(Boolean)
-        : typeof incomingSkills ===
+        : typeof requiredSkills ===
           "string"
-          ? incomingSkills
+          ? requiredSkills
             .split(",")
             .map((skill) =>
               skill.trim()
@@ -175,8 +156,7 @@ exports.createJob = async (
           : [];
 
     if (
-      normalizedSkills.length ===
-      0
+      normalizedSkills.length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -185,22 +165,20 @@ exports.createJob = async (
       });
     }
 
-    const job =
-      await Job.create({
-        company: req.user._id,
-        title: title.trim(),
-        description:
-          description.trim(),
-        location:
-          location?.trim() || "",
-        salary: parsedSalary,
-        minimumCGPA:
-          parsedCGPA,
-        requiredSkills:
-          normalizedSkills,
-        deadline:
-          deadline || undefined
-      });
+    const job = await Job.create({
+      company: req.user._id,
+      title: title.trim(),
+      description:
+        description.trim(),
+      location:
+        location?.trim() || "",
+      salary: parsedSalary,
+      minimumCGPA: parsedCGPA,
+      requiredSkills:
+        normalizedSkills,
+      deadline:
+        deadline || undefined
+    });
 
     return res.status(201).json({
       success: true,
@@ -239,15 +217,8 @@ exports.updateJob = async (
       });
     }
 
-    if (
-      req.body.title !==
-      undefined
-    ) {
-      if (
-        !String(
-          req.body.title
-        ).trim()
-      ) {
+    if (req.body.title !== undefined) {
+      if (!req.body.title.trim()) {
         return res.status(400).json({
           success: false,
           message:
@@ -256,9 +227,7 @@ exports.updateJob = async (
       }
 
       job.title =
-        String(
-          req.body.title
-        ).trim();
+        req.body.title.trim();
     }
 
     if (
@@ -266,9 +235,7 @@ exports.updateJob = async (
       undefined
     ) {
       if (
-        !String(
-          req.body.description
-        ).trim()
+        !req.body.description.trim()
       ) {
         return res.status(400).json({
           success: false,
@@ -278,9 +245,7 @@ exports.updateJob = async (
       }
 
       job.description =
-        String(
-          req.body.description
-        ).trim();
+        req.body.description.trim();
     }
 
     if (
@@ -295,28 +260,12 @@ exports.updateJob = async (
       req.body.salary !==
       undefined
     ) {
-      if (
-        req.body.salary ===
-        "" ||
-        req.body.salary ===
-        null
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Enter a valid salary"
-        });
-      }
-
-      const salary =
-        Number(
-          req.body.salary
-        );
+      const salary = Number(
+        req.body.salary
+      );
 
       if (
-        !Number.isFinite(
-          salary
-        ) ||
+        !Number.isFinite(salary) ||
         salary <= 0
       ) {
         return res.status(400).json({
@@ -333,19 +282,6 @@ exports.updateJob = async (
       req.body.minimumCGPA !==
       undefined
     ) {
-      if (
-        req.body.minimumCGPA ===
-        "" ||
-        req.body.minimumCGPA ===
-        null
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Enter a valid minimum CGPA between 0 and 10"
-        });
-      }
-
       const minimumCGPA =
         Number(
           req.body.minimumCGPA
@@ -369,52 +305,27 @@ exports.updateJob = async (
         minimumCGPA;
     }
 
-    /*
-     * Accept both fields for
-     * compatibility with existing
-     * frontend code.
-     */
-    const incomingSkills =
-      req.body.requiredSkills !==
-        undefined
-        ? req.body.requiredSkills
-        : req.body.skills;
-
     if (
-      incomingSkills !==
+      req.body.requiredSkills !==
       undefined
     ) {
-      const normalizedSkills =
+      job.requiredSkills =
         Array.isArray(
-          incomingSkills
+          req.body.requiredSkills
         )
-          ? incomingSkills
+          ? req.body.requiredSkills
             .map((skill) =>
               String(skill).trim()
             )
             .filter(Boolean)
           : String(
-            incomingSkills
+            req.body.requiredSkills
           )
             .split(",")
             .map((skill) =>
               skill.trim()
             )
             .filter(Boolean);
-
-      if (
-        normalizedSkills.length ===
-        0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "At least one required skill is required"
-        });
-      }
-
-      job.requiredSkills =
-        normalizedSkills;
     }
 
     if (
@@ -455,32 +366,21 @@ exports.updateJob = async (
   }
 };
 
-exports.getMyJobs = async (
-  req,
-  res
-) => {
+exports.getMyJobs = async (req, res) => {
   try {
-    const jobs =
-      await Job.find({
-        company: req.user._id
-      }).sort({
-        createdAt: -1
-      });
-
-    return res.json({
-      success: true,
-      jobs
-    });
-  } catch (error) {
-    console.error(
-      "Get company jobs error:",
-      error
+    const jobs = await Job.find({ company: req.user._id }).sort({ createdAt: -1 }).lean();
+    const jobsWithCounts = await Promise.all(
+      jobs.map(async (job) => ({
+        ...job,
+        applicantCount: await Application.countDocuments({ job: job._id }),
+        selectedCount: await Application.countDocuments({ job: job._id, status: "selected" })
+      }))
     );
 
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    return res.json({ success: true, jobs: jobsWithCounts });
+  } catch (error) {
+    console.error("Get company jobs error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -515,8 +415,7 @@ exports.deleteJob = async (
       );
 
     if (
-      applicationIds.length >
-      0
+      applicationIds.length > 0
     ) {
       await Interview.deleteMany({
         application: {

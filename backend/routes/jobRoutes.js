@@ -25,6 +25,16 @@ router.get(
   getJobs
 );
 
+// Explicit authenticated student jobs endpoint.
+// This avoids accidentally routing student requests through
+// company-only authorization middleware.
+router.get(
+  "/student",
+  protect,
+  authorize("student"),
+  getJobs
+);
+
 router.get(
   "/company/my",
   protect,

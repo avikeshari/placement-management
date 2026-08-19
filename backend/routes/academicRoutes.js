@@ -3,10 +3,18 @@ const protect = require("../middleware/authMiddleware");
 const authorize = require("../middleware/roleMiddleware");
 const csvUpload = require("../middleware/csvUploadMiddleware");
 const {
-  importAcademicRecords
+  importAcademicRecords,
+  getMyAcademicRecord
 } = require("../controllers/academicController");
 
 const router = express.Router();
+
+router.get(
+  "/me",
+  protect,
+  authorize("student"),
+  getMyAcademicRecord
+);
 
 router.post(
   "/import",

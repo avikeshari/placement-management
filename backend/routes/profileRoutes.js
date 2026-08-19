@@ -6,35 +6,44 @@ const upload = require("../middleware/uploadMiddleware");
 
 const {
   getMyProfile,
+  getStudentProfileForCompany,
   updateProfile,
   uploadResume,
+  downloadResume,
   deleteResume,
   deleteMyAccount
 } = require("../controllers/profileController");
 
-const router =
-  express.Router();
+const router = express.Router();
 
-/*
- * Student profile
- */
 router.get(
   "/me",
   protect,
-  authorize("student"),
+  authorize("student", "company"),
   getMyProfile
+);
+
+router.get(
+  "/student/:userId",
+  protect,
+  authorize("company", "admin"),
+  getStudentProfileForCompany
 );
 
 router.put(
   "/me",
   protect,
-  authorize("student"),
+  authorize("student", "company"),
   updateProfile
 );
 
-/*
- * Student resume
- */
+router.get(
+  "/resume",
+  protect,
+  authorize("student"),
+  downloadResume
+);
+
 router.post(
   "/resume",
   protect,
@@ -50,16 +59,10 @@ router.delete(
   deleteResume
 );
 
-/*
- * Student OR Company account deletion
- */
 router.delete(
   "/me",
   protect,
-  authorize(
-    "student",
-    "company"
-  ),
+  authorize("student", "company"),
   deleteMyAccount
 );
 

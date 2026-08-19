@@ -53,12 +53,31 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const emailAddress =
+      email?.trim().toLowerCase();
+
+    if (!emailAddress || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required"
+      });
+    }
+
+    const user = await User.findOne({
+      email: emailAddress
+    });
 
     if (!user) {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password"
+      });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been deactivated. Please contact the administrator."
       });
     }
 

@@ -68,6 +68,7 @@ exports.applyForJob = async (req, res) => {
       job: job._id,
       resume: {
         url: profile.resume.url,
+        downloadUrl: profile.resume.downloadUrl,
         publicId: profile.resume.publicId,
         originalName: profile.resume.originalName
       }
@@ -98,10 +99,11 @@ exports.getMyApplications = async (req, res) => {
     const applications = await Application.find({
       student: req.user._id
     })
-      .populate(
-        "job",
-        "title description location salary deadline status company"
-      )
+      .populate({
+        path: "job",
+        select: "title description location salary deadline status company",
+        populate: { path: "company", select: "name email" }
+      })
       .sort({ createdAt: -1 });
 
     res.json({

@@ -7,30 +7,28 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const connectDB = require("./config/db");
+const createProductionAdmin = require("./scripts/createProductionAdmin");
 const notFound = require("./middleware/notFoundMiddleware");
 const errorHandler = require("./middleware/errorMiddleware");
 
 const app = express();
 
-connectDB();
-
 app.use(helmet());
 
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(
-          new Error("Not allowed by CORS")
-        );
+        return callback(null, true);
       }
+
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true
   })
@@ -56,13 +54,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Placement Portal API is running"
-  });
-});
-
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/profile", require("./routes/profileRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
@@ -76,6 +67,27 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    // Automatically create/check the permanent production admin
+    // before the API starts accepting requests.
+    await createProductionAdmin();
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(
+        `Environment: ${process.env.NODE_ENV || "development"}`
+      );
+    });
+  } catch (error) {
+    console.error(
+      "Server startup failed:",
+      error.message
+    );
+    process.exit(1);
+  }
+};
+
+startServer();

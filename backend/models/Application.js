@@ -25,6 +25,7 @@ const applicationSchema = new mongoose.Schema(
     },
     resume: {
       url: String,
+      downloadUrl: String,
       publicId: String,
       originalName: String
     }
