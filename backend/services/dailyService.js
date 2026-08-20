@@ -1,4 +1,4 @@
-const axios = require("axios");
+/*const axios = require("axios");
 
 const createDailyRoom = async ({ applicationId, scheduledAt }) => {
   const start = new Date(scheduledAt);
@@ -27,4 +27,4 @@ const createDailyRoom = async ({ applicationId, scheduledAt }) => {
   return response.data;
 };
 
-module.exports = { createDailyRoom };
+module.exports = { createDailyRoom };*/

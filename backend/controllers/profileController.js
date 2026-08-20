@@ -8,6 +8,22 @@ const uploadToCloudinary = require("../utils/uploadToCloudinary");
 
 exports.getStudentProfileForCompany = async (req, res) => {
   try {
+    if (req.user.role === "company") {
+      const relationship = await Application.findOne({
+        student: req.params.userId
+      }).populate({
+        path: "job",
+        match: { company: req.user._id },
+        select: "company"
+      });
+      if (!relationship?.job) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorized to view this student's profile"
+        });
+      }
+    }
+
     const profile = await Profile.findOne({ user: req.params.userId })
       .populate("user", "name email role isActive");
 
@@ -391,6 +407,55 @@ exports.downloadResume = async (req, res) => {
       message:
         "Resume could not be retrieved from storage. Please re-upload the resume."
     });
+  }
+};
+
+exports.downloadStudentResume = async (req, res) => {
+  try {
+    if (req.user.role !== "company" && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Not authorized to view this resume" });
+    }
+
+    const studentId = req.params.userId;
+
+    if (req.user.role === "company") {
+      const application = await Application.findOne({
+        student: studentId,
+        ...(req.query.applicationId ? { _id: req.query.applicationId } : {})
+      }).populate("job", "company");
+
+      if (!application || application.job.company.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: "You are not authorized to view this student's resume" });
+      }
+    }
+
+    const profile = await Profile.findOne({ user: studentId });
+
+    if (!profile?.resume?.url) {
+      return res.status(404).json({ success: false, message: "No resume found" });
+    }
+
+    const axios = require("axios");
+    const response = await axios.get(profile.resume.url, {
+      responseType: "arraybuffer",
+      validateStatus: (status) => status >= 200 && status < 300
+    });
+
+    const fileName = profile.resume.originalName || "resume";
+    const extension = fileName.includes(".") ? fileName.split(".").pop().toLowerCase() : "";
+    const contentTypes = {
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    };
+
+    res.setHeader("Content-Type", contentTypes[extension] || response.headers["content-type"] || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename="${fileName.replace(/"/g, "")}"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.send(Buffer.from(response.data));
+  } catch (error) {
+    console.error("Student resume delivery error:", error.response?.status, error.message);
+    return res.status(502).json({ success: false, message: "Resume could not be retrieved from storage." });
   }
 };
 

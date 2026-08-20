@@ -14,6 +14,7 @@ import Register from "./pages/Register";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import InterviewRoom from "./pages/InterviewRoom";
+import Messages from "./pages/Messages";
 
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
@@ -179,8 +180,12 @@ const App = () => {
           />
         }
       >
+        <Route element={<DashboardLayout />}>
+          <Route path="/messages" element={<Messages />} />
+        </Route>
+
         <Route
-          path="/interview-room"
+          path="/interview-room/:interviewId"
           element={<InterviewRoom />}
         />
       </Route>

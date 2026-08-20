@@ -9,7 +9,8 @@ import {
   Building2,
   BarChart3,
   FileSpreadsheet,
-  UserRoundCog
+  UserRoundCog,
+  MessageCircle
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -40,11 +41,8 @@ const Sidebar = () => {
         path: "/student/applications",
         icon: FileText
       },
-      {
-        label: "Interviews",
-        path: "/student/interviews",
-        icon: CalendarDays
-      }
+      { label: "Interviews", path: "/student/interviews", icon: CalendarDays },
+      { label: "Messages", path: "/messages", icon: MessageCircle }
     ],
     company: [
       {
@@ -71,7 +69,8 @@ const Sidebar = () => {
         label: "Interviews",
         path: "/company/interviews",
         icon: CalendarDays
-      }
+      },
+      { label: "Messages", path: "/messages", icon: MessageCircle }
     ],
     admin: [
       { label: "Dashboard", path: "/admin", icon: LayoutDashboard },

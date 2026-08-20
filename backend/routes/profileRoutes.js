@@ -10,6 +10,7 @@ const {
   updateProfile,
   uploadResume,
   downloadResume,
+  downloadStudentResume,
   deleteResume,
   deleteMyAccount
 } = require("../controllers/profileController");
@@ -28,6 +29,13 @@ router.get(
   protect,
   authorize("company", "admin"),
   getStudentProfileForCompany
+);
+
+router.get(
+  "/student/:userId/resume",
+  protect,
+  authorize("company", "admin"),
+  downloadStudentResume
 );
 
 router.put(
@@ -49,6 +57,7 @@ router.post(
   protect,
   authorize("student"),
   upload.single("resume"),
+  upload.verifyResumeSignature,
   uploadResume
 );
 

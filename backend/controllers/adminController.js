@@ -40,8 +40,8 @@ exports.getStats = async (req, res) => {
     ] = await Promise.all([
       User.countDocuments({ role: "student" }),
       User.countDocuments({ role: "company" }),
-      Job.countDocuments(),
-      Job.countDocuments({ status: "open" }),
+      Job.countDocuments({ isDeleted: false }),
+      Job.countDocuments({ status: "open", isDeleted: false }),
       Application.countDocuments(),
       Application.countDocuments({ status: "shortlisted" }),
       Interview.countDocuments(),
@@ -49,7 +49,7 @@ exports.getStats = async (req, res) => {
       Application.countDocuments({ status: "rejected" }),
       Application.distinct("student", { status: "selected" }),
       Job.aggregate([
-        { $match: { salary: { $type: "number", $gt: 0 } } },
+        { $match: { isDeleted: false, salary: { $type: "number", $gt: 0 } } },
         {
           $group: {
             _id: null,
@@ -129,7 +129,7 @@ exports.getCompanies = async (req, res) => {
 
     const ids = companies.map((company) => company._id);
     const jobs = await Job.aggregate([
-      { $match: { company: { $in: ids } } },
+      { $match: { company: { $in: ids }, isDeleted: false } },
       { $group: { _id: "$company", jobs: { $sum: 1 }, openJobs: { $sum: { $cond: [{ $eq: ["$status", "open"] }, 1, 0] } } } }
     ]);
     const jobMap = new Map(jobs.map((item) => [String(item._id), item]));
@@ -149,7 +149,7 @@ exports.getCompanies = async (req, res) => {
 
 exports.getJobs = async (req, res) => {
   try {
-    const jobs = await Job.find()
+    const jobs = await Job.find({ isDeleted: false })
       .populate("company", "name email")
       .sort({ createdAt: -1 })
       .lean();
@@ -331,17 +331,12 @@ exports.deleteJob = async (req, res) => {
       return res.status(404).json({ success: false, message: "Job not found" });
     }
 
-    const applications = await Application.find({ job: job._id }).select("_id");
-    const applicationIds = applications.map((item) => item._id);
+    job.isDeleted = true;
+    job.deletedAt = new Date();
+    job.status = "closed";
+    await job.save();
 
-    await Interview.deleteMany({
-      application: { $in: applicationIds }
-    });
-
-    await Application.deleteMany({ job: job._id });
-    await Job.deleteOne({ _id: job._id });
-
-    res.json({ success: true, message: "Job deleted successfully" });
+    res.json({ success: true, message: "Job archived successfully. Application and interview history has been preserved." });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

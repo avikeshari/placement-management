@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 
 const connectDB = require("./config/db");
 const createProductionAdmin = require("./scripts/createProductionAdmin");
+const seedDemoData = require("./scripts/seedDemoUsers");
 const notFound = require("./middleware/notFoundMiddleware");
 const errorHandler = require("./middleware/errorMiddleware");
 
@@ -19,12 +20,12 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   process.env.FRONTEND_URL
-].filter(Boolean);
+].filter(Boolean).map((origin) => origin.replace(/\/$/, ""));
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         return callback(null, true);
       }
 
@@ -59,6 +60,7 @@ app.use("/api/profile", require("./routes/profileRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
 app.use("/api/applications", require("./routes/applicationRoutes"));
 app.use("/api/interviews", require("./routes/interviewRoutes"));
+app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/academic", require("./routes/academicRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 
@@ -72,8 +74,9 @@ const startServer = async () => {
     await connectDB();
 
     // Automatically create/check the permanent production admin
-    // before the API starts accepting requests.
+    // and ensure the demo account/profile data exists.
     await createProductionAdmin();
+    await seedDemoData();
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
