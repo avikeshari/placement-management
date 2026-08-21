@@ -1,8 +1,14 @@
 import axios from "axios";
 
+const configuredBaseUrl = (import.meta.env.VITE_API_URL || "/api").trim();
+const baseURL = configuredBaseUrl.replace(/\/$/, "") || "/api";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api",
-  timeout: 60000
+  baseURL,
+  timeout: 60000,
+  headers: {
+    "Content-Type": "application/json"
+  }
 });
 
 api.interceptors.request.use((config) => {

@@ -13,10 +13,12 @@ const seedDemoData = require("./scripts/seedDemoUsers");
 const notFound = require("./middleware/notFoundMiddleware");
 const errorHandler = require("./middleware/errorMiddleware");
 const { runInterviewReminders } = require("./utils/interviewReminders");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
 const environment = validateEnvironment();
+const API_VERSION = process.env.API_VERSION || "production-auth-routing-v2";
 
 app.use(helmet());
 
@@ -55,11 +57,12 @@ app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "Placement API is healthy",
+    apiVersion: API_VERSION,
     timestamp: new Date().toISOString()
   });
 });
 
-app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/auth", authRoutes);
 app.use("/api/profile", require("./routes/profileRoutes"));
 app.use("/api/jobs", require("./routes/jobRoutes"));
 app.use("/api/applications", require("./routes/applicationRoutes"));
@@ -77,6 +80,27 @@ app.use("/api/candidate-search", require("./routes/candidateSearchRoutes"));
 app.use("/api/career-events", require("./routes/careerEventRoutes"));
 app.use("/api/audit-logs", require("./routes/auditLogRoutes"));
 app.use("/api/saved-candidates", require("./routes/savedCandidateRoutes"));
+
+app.get("/api/deployment-info", (req, res) => {
+  res.json({
+    success: true,
+    apiVersion: API_VERSION,
+    authRouterMounted: true,
+    endpoints: [
+      "POST /api/auth/login",
+      "POST /api/auth/register"
+    ]
+  });
+});
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Placement Management API is running",
+    health: "/api/health",
+    auth: "/api/auth"
+  });
+});
 
 app.use(notFound);
 app.use(errorHandler);
@@ -97,9 +121,8 @@ const startServer = async () => {
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(
-        `Environment: ${environment.nodeEnv}`
-      );
+      console.log(`Environment: ${environment.nodeEnv}`);
+      console.log("Mounted API routes: /api/health, /api/auth, /api/profile, /api/jobs, /api/applications, /api/interviews, /api/messages, /api/academic, /api/admin, /api/drives, /api/benchmark, /api/notifications, /api/saved-jobs, /api/saved-searches, /api/company-follows, /api/candidate-search, /api/career-events, /api/audit-logs, /api/saved-candidates");
     });
   } catch (error) {
     console.error(

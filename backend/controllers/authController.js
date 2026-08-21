@@ -3,10 +3,20 @@ const User = require("../models/User");
 const Profile = require("../models/Profile");
 const generateToken = require("../utils/generateToken");
 
+const normalizeEmail = (email) =>
+  typeof email === "string" ? email.trim().toLowerCase() : "";
+
+const publicUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role
+});
+
 exports.register = async (req, res) => {
   try {
-    const { name, password, role = "student" } = req.body;
-    const emailAddress = email?.trim().toLowerCase();
+    const { name, password, role = "student" } = req.body || {};
+    const emailAddress = normalizeEmail(req.body?.email);
 
     if (!name?.trim() || !emailAddress || !password) {
       return res.status(400).json({
@@ -25,12 +35,13 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const safeRole = role === "company" ? "company" : "student";
 
     const user = await User.create({
-      name,
+      name: name.trim(),
       email: emailAddress,
       password: hashedPassword,
-      role: role === "company" ? "company" : "student"
+      role: safeRole
     });
 
     if (user.role === "student") {
@@ -39,30 +50,24 @@ exports.register = async (req, res) => {
 
     const token = generateToken(user);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: publicUser(user)
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Registration error:", error);
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Unable to register account"
     });
   }
 };
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    const emailAddress =
-      email?.trim().toLowerCase();
+    const { password } = req.body || {};
+    const emailAddress = normalizeEmail(req.body?.email);
 
     if (!emailAddress || !password) {
       return res.status(400).json({
@@ -71,9 +76,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: emailAddress
-    });
+    const user = await User.findOne({ email: emailAddress });
 
     if (!user) {
       return res.status(401).json({
@@ -89,10 +92,7 @@ exports.login = async (req, res) => {
       });
     }
 
-    const validPassword = await bcrypt.compare(
-      password,
-      user.password
-    );
+    const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({
@@ -103,20 +103,16 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user);
 
-    res.json({
+    return res.json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: publicUser(user)
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Login error:", error);
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Unable to login"
     });
   }
 };
