@@ -1,6 +1,9 @@
 const Job = require("../models/Job");
 const Application = require("../models/Application");
 const AcademicRecord = require("../models/AcademicRecord");
+const SavedSearch = require("../models/SavedSearch");
+const Notification = require("../models/Notification");
+const Profile = require("../models/Profile");
 
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -45,7 +48,7 @@ const normalizeBranches = (value) => {
 
 const buildEligibility = (job, academicRecord) => {
   const reasons = [];
-  if (!academicRecord) {
+  if (!academicRecord || academicRecord.verified !== true) {
     return { eligible: false, reasons: ["Verified academic record is required"] };
   }
 
@@ -142,9 +145,17 @@ exports.getJobs = async (req, res) => {
 
     if (req.user?.role === "student") {
       const academicRecord = await AcademicRecord.findOne({ user: req.user._id }).lean();
+      const studentProfile = await Profile.findOne({ user: req.user._id }).lean();
       jobs.forEach((job) => {
         job.eligibility = buildEligibility(job, academicRecord);
+        const interests = new Set([...(studentProfile?.jobInterests || []), ...(studentProfile?.skills || [])].map(x => String(x).toLowerCase()));
+        const text = `${job.title} ${(job.requiredSkills || []).join(" ")}`.toLowerCase();
+        const matched = [...interests].filter(x => x && text.includes(x)).length;
+        const locationMatch = (studentProfile?.preferredLocations || []).some(x => String(job.location || "").toLowerCase().includes(String(x).toLowerCase()));
+        job.matchScore = Math.min(100, matched * 15 + (locationMatch ? 20 : 0) + (job.eligibility.eligible ? 35 : 0));
+        job.recommendationReason = job.matchScore >= 70 ? "Strong match for your profile and preferences" : job.matchScore >= 40 ? "Potential match based on your interests" : "Explore this opportunity";
       });
+      jobs.sort((a,b) => (b.matchScore || 0) - (a.matchScore || 0));
     }
 
     return res.json({
@@ -203,6 +214,9 @@ const validateJobFields = ({ title, description, salary, minimumCGPA, maxBacklog
 
 exports.createJob = async (req, res) => {
   try {
+    const User = require("../models/User");
+    const company = await User.findOne({ _id: req.user._id, role: "company" }).select("isVerified");
+    if (!company?.isVerified) return res.status(403).json({ success: false, message: "Company verification is required before publishing jobs." });
     const errorMessage = validateJobFields(req.body);
     if (errorMessage) return res.status(400).json({ success: false, message: errorMessage });
 
@@ -231,6 +245,7 @@ exports.createJob = async (req, res) => {
     const job = await Job.create({
       company: req.user._id,
       title: req.body.title.trim(),
+      type: req.body.type === "internship" ? "internship" : "job",
       description: req.body.description.trim(),
       location: req.body.location?.trim() || "",
       salary: Number(req.body.salary),
@@ -244,6 +259,15 @@ exports.createJob = async (req, res) => {
       status: "open"
     });
 
+    try {
+      const searches = await SavedSearch.find({ alertsEnabled: true }).lean();
+      const matches = searches.filter(search => {
+        const q = search.query || {};
+        const hay = `${job.title} ${job.description} ${job.location} ${(job.requiredSkills || []).join(" ")}`.toLowerCase();
+        return (!q.q || hay.includes(String(q.q).toLowerCase())) && (!q.location || String(job.location || "").toLowerCase().includes(String(q.location).toLowerCase())) && (!q.skill || (job.requiredSkills || []).some(s => String(s).toLowerCase().includes(String(q.skill).toLowerCase())));
+      });
+      if (matches.length) await Notification.insertMany(matches.map(m => ({ user:m.user, title:"New job matches your saved search", message:`${job.title} matches your saved search.`, type:"job_alert", link:"/student/jobs" })));
+    } catch (alertError) { console.error("Job alert notification failed:", alertError.message); }
     return res.status(201).json({ success: true, message: "Job published successfully", job });
   } catch (error) {
     console.error("Create job error:", error);

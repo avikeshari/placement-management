@@ -6,6 +6,8 @@ const {
   scheduleInterview,
   cancelInterview,
   respondToInterview,
+  submitFeedback,
+  completeInterview,
   getMyInterviews,
   getInterviewAccess
 } = require("../controllers/interviewController");
@@ -24,6 +26,13 @@ router.patch(
   protect,
   authorize("company"),
   cancelInterview
+);
+
+router.patch(
+  "/:id/feedback", protect, authorize("company"), submitFeedback
+);
+router.patch(
+  "/:id/complete", protect, authorize("company"), completeInterview
 );
 
 router.patch(

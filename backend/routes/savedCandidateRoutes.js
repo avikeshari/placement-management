@@ -1,0 +1,1 @@
+const express=require('express'); const protect=require('../middleware/authMiddleware'); const authorize=require('../middleware/roleMiddleware'); const c=require('../controllers/savedCandidateController'); const r=express.Router(); r.use(protect,authorize('company')); r.get('/',c.list); r.post('/:studentId',c.save); r.delete('/:studentId',c.remove); module.exports=r;

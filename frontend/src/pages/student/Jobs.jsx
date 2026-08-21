@@ -43,10 +43,16 @@ const Jobs = () => {
 
   const appliedIds = useMemo(() => new Set(applications.map((a) => String(a.job?._id || a.job))), [applications]);
 
+  const saveJob = async (jobId) => { try { await api.post(`/benchmark/saved-jobs/${jobId}`); toast.success("Job saved"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save job")); } };
+  const followCompany = async (companyId) => { if (!companyId) return; try { await api.post(`/benchmark/companies/${companyId}/follow`); toast.success("Company followed"); } catch (e) { toast.error(getErrorMessage(e,"Unable to follow company")); } };
+  const saveSearch = async () => { try { const name = window.prompt("Name this search", filters.q || filters.skill || "My job search"); if (!name) return; await api.post("/benchmark/saved-searches", { name, query: filters, alertsEnabled: true }); toast.success("Search saved and alerts enabled"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save search")); } };
+
   const applyForJob = async (jobId) => {
+    const coverLetter = window.prompt("Optional cover letter (you can leave this blank):", "") || "";
+    if (coverLetter.length > 5000) { toast.error("Cover letter must be 5000 characters or fewer"); return; }
     try {
       setApplyingId(jobId);
-      await api.post(`/applications/${jobId}`);
+      await api.post(`/applications/${jobId}`, { coverLetter });
       toast.success("Application submitted successfully");
       setApplications((prev) => [...prev, { job: jobId, status: "applied" }]);
     } catch (error) {
@@ -70,7 +76,7 @@ const Jobs = () => {
         <input value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Search title or skill" className="border rounded-lg px-3 py-2" />
         <input value={filters.location} onChange={(e) => setFilters({ ...filters, location: e.target.value })} placeholder="Location" className="border rounded-lg px-3 py-2" />
         <input type="number" min="0" max="10" step="0.1" value={filters.minCGPA} onChange={(e) => setFilters({ ...filters, minCGPA: e.target.value })} placeholder="Your CGPA" className="border rounded-lg px-3 py-2" />
-        <input value={filters.skill} onChange={(e) => setFilters({ ...filters, skill: e.target.value })} placeholder="Required skill" className="border rounded-lg px-3 py-2" />
+        <input value={filters.skill} onChange={(e) => setFilters({ ...filters, skill: e.target.value })} placeholder="Required skill" className="border rounded-lg px-3 py-2" /><button onClick={saveSearch} className="bg-slate-900 text-white rounded-lg px-4 py-2">Save Search</button>
       </div>
 
       {profile && !profile.resume?.url && (
@@ -92,6 +98,8 @@ const Jobs = () => {
               applied={appliedIds.has(String(job._id))}
               eligible={job.eligibility?.eligible ?? (academicRecord?.cgpa === undefined || academicRecord?.cgpa >= job.minimumCGPA)}
               eligibilityReasons={job.eligibility?.reasons || []}
+              onSave={saveJob}
+              onFollowCompany={followCompany}
             />
           ))}
         </div>

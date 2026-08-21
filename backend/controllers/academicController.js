@@ -158,7 +158,8 @@ exports.importAcademicRecords = async (req, res) => {
           course: item.course,
           branch: item.branch,
           backlogs: item.backlogs,
-          skills: item.skills
+          skills: item.skills,
+          verified: true
         };
         if (item.graduationYear !== undefined) record.graduationYear = item.graduationYear;
         if (item.cgpa !== undefined) record.cgpa = item.cgpa;

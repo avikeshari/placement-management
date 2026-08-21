@@ -210,6 +210,9 @@ const Interviews = () => {
               )}
             </div>
 
+            {interview.status === "scheduled" && <button type="button" onClick={async()=>{try{await api.patch(`/interviews/${interview._id}/complete`);toast.success("Interview marked completed");await load()}catch(e){toast.error(getErrorMessage(e,"Unable to complete interview."))}}} className="mt-4 border px-4 py-2 rounded-lg">Mark Completed</button>}
+            {interview.status === "completed" && <div className="mt-4 border rounded-xl p-4"><p className="font-semibold">Interview Feedback</p><div className="grid md:grid-cols-2 gap-3 mt-3"><input id={`rating-${interview._id}`} type="number" min="1" max="5" placeholder="Rating 1-5" className="border rounded-lg px-3 py-2"/><input id={`recommendation-${interview._id}`} placeholder="Recommendation: hire / hold / reject" className="border rounded-lg px-3 py-2"/><input id={`technical-${interview._id}`} placeholder="Technical skills feedback" className="border rounded-lg px-3 py-2"/><input id={`communication-${interview._id}`} placeholder="Communication feedback" className="border rounded-lg px-3 py-2"/><textarea id={`comments-${interview._id}`} placeholder="Comments" className="md:col-span-2 border rounded-lg px-3 py-2"/></div><button className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg" onClick={async()=>{const v=id=>document.getElementById(`${id}-${interview._id}`)?.value;try{await api.patch(`/interviews/${interview._id}/feedback`,{rating:v('rating'),recommendation:v('recommendation'),technicalSkills:v('technical'),communication:v('communication'),comments:v('comments')});toast.success("Feedback saved");await load()}catch(e){toast.error(getErrorMessage(e,"Unable to save feedback."))}}}>Save Feedback</button></div>}
+
             {interview.mode === "offline" && (
               <p className="mt-5 text-slate-600">
                 <strong>Location:</strong>{" "}

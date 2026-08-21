@@ -21,6 +21,14 @@ const applicationSchema = new mongoose.Schema(
       index: true
     },
     statusUpdatedAt: { type: Date, default: Date.now },
+    statusHistory: [{ status: String, at: { type: Date, default: Date.now }, note: { type: String, default: "" } }],
+    rejectionReason: { type: String, default: "" },
+    withdrawalReason: { type: String, default: "" },
+    screeningAnswers: { type: [String], default: [] },
+    coverLetter: { type: String, trim: true, default: "", maxlength: 5000 },
+    offerStatus: { type: String, enum: ["none", "pending", "accepted", "declined"], default: "none", index: true },
+    offerUpdatedAt: { type: Date, default: null },
+    offerExpiresAt: { type: Date, default: null },
     appliedAt: { type: Date, default: Date.now },
     resume: {
       url: String,

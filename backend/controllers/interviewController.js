@@ -2,6 +2,7 @@ const Application = require("../models/Application");
 const Interview = require("../models/Interview");
 const sendEmail = require("../utils/sendEmail");
 const Conversation = require("../models/Conversation");
+const Notification = require("../models/Notification");
 
 const isValidMeetingUrl = (value) => {
   try {
@@ -191,6 +192,8 @@ exports.scheduleInterview = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    try { await Notification.create({ user: application.student._id, title: "Interview scheduled", message: `Your interview for ${application.job.title} has been scheduled.`, type: "interview", link: "/student/interviews" }); } catch (n) { console.error("Interview notification failed:", n.message); }
+
     try {
       await sendEmail({
         to: application.student.email,
@@ -373,3 +376,6 @@ exports.getInterviewAccess = async (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid interview ID" });
   }
 };
+
+exports.submitFeedback=async(req,res)=>{try{const {rating,technicalSkills,communication,recommendation,comments}=req.body;const interview=await Interview.findOne({_id:req.params.id,company:req.user._id});if(!interview)return res.status(404).json({success:false,message:"Interview not found"});if(interview.status!=="completed"&&interview.status!=="scheduled")return res.status(400).json({success:false,message:"Feedback cannot be submitted for this interview"});interview.feedback={rating:Number(rating)||null,technicalSkills:String(technicalSkills||""),communication:String(communication||""),recommendation:recommendation||"",comments:String(comments||""),submittedAt:new Date()};await interview.save();res.json({success:true,message:"Interview feedback saved",interview});}catch(e){res.status(500).json({success:false,message:"Unable to save feedback"});}};
+exports.completeInterview=async(req,res)=>{try{const interview=await Interview.findOne({_id:req.params.id,company:req.user._id});if(!interview)return res.status(404).json({success:false,message:"Interview not found"});interview.status="completed";await interview.save();res.json({success:true,interview});}catch(e){res.status(500).json({success:false,message:"Unable to complete interview"});}};

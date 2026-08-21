@@ -342,3 +342,80 @@ Companies can open **Messages** from the sidebar after scheduling an interview. 
 Messages are restricted to the student and company associated with the application. Students and companies cannot access another application's conversation by changing an ID in the URL.
 
 The messaging UI refreshes the selected conversation periodically so newly received messages appear without a full-page refresh.
+
+
+# Specification Coverage
+
+The current version includes the major requirements from the College Placement Management System brief:
+
+- Student applications with resume and cover letter
+- Application status tracking and withdrawal
+- Interview scheduling for online/offline interviews
+- Interview accept/decline/cancel workflows
+- Automated interview confirmation and 24-hour/1-hour reminder emails
+- Student-company messaging after interview scheduling
+- Company job and internship opportunity types
+- Company applicant review, resume access, feedback and hiring decisions
+- Placement Drive management and student participation
+- Drive participation/performance CSV reporting
+- Recruitment dashboards and graphical analytics
+- Academic records with CGPA, grades-related fields, achievements and transcript metadata
+- Profile-to-academic-record synchronization for student profile updates
+- Company database CSV export and import/update for existing company accounts
+- Offer acceptance/decline tracking
+- MERN stack, TailwindCSS, Netlify and Render deployment configuration
+- Manual external meeting links for virtual interviews (Google Meet/Zoom/Teams compatible)
+
+For production email reminders, configure the SMTP variables in the backend environment.
+
+## Industry-Benchmark Features (Non-AI)
+
+The platform includes additional recruiting-platform capabilities beyond the core placement workflow:
+
+- Student profile privacy controls: Private, Employers, Community
+- Optional GPA sharing with employers
+- Career interests, preferred locations and job types
+- Saved jobs
+- Saved searches and job alerts
+- Non-AI profile/job match scoring based on explicit profile data and eligibility
+- Employer following
+- Verified employer workflow
+- Employer talent search
+- Private company candidate notes
+- In-app notifications
+- Career events and fairs with registration
+- Calendar `.ics` export for events
+- Career resources
+- Admin audit logs
+- Company database import/export
+- Interview reminders and notifications
+- Application and offer workflow
+- Student/company messaging
+
+AI career assistance and AI hiring decisions are intentionally not included.
+
+## Industry-benchmark module architecture
+
+The benchmark features are exposed through dedicated modules in addition to the consolidated benchmark API for backward compatibility:
+
+- Saved jobs/searches
+- Notifications
+- Company follows
+- Career events
+- Candidate search and notes
+- Saved candidates
+- Audit logs
+- Job matching and job alerts
+
+The legacy `/api/benchmark/*` endpoints remain available while the dedicated endpoints under `/api/notifications`, `/api/saved-jobs`, `/api/saved-searches`, `/api/company-follows`, `/api/candidate-search`, `/api/career-events`, `/api/audit-logs`, and `/api/saved-candidates` are also available.
+
+## Student Career Resources
+
+The Student → Career Resources area is a four-section career center:
+
+- **Resume Preparation** (`/student/resources/resume`) — resume structure, content guidance and a final resume checklist.
+- **Interview Preparation** (`/student/resources/interview`) — HR, technical, STAR-method, company research and interview-day preparation guidance.
+- **Placement Readiness Checklist** (`/student/resources/checklist`) — dynamically calculated from the signed-in student's profile, verified academic record, resume, skills, projects/experience, certifications, job preferences, applications and interviews.
+- **Professional Communication** (`/student/resources/communication`) — recruiter communication guidance and copyable message templates.
+
+The readiness checklist does not store a separate manual completion flag. It derives completion from live placement data returned by `/api/profile/me`, `/api/academic/me`, `/api/applications/my`, `/api/interviews/my`, and `/api/drives`. Drive registration and interview-response items are shown as not applicable when there is no current drive or scheduled interview. The article pages include links to public university/career-service sources; their content is paraphrased rather than copied verbatim.

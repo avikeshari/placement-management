@@ -9,6 +9,7 @@ const jobSchema = new mongoose.Schema(
       index: true
     },
     title: { type: String, required: true, trim: true },
+    type: { type: String, enum: ["job", "internship"], default: "job", index: true },
     description: { type: String, required: true },
     location: { type: String, trim: true, default: "" },
     salary: Number,
@@ -18,6 +19,9 @@ const jobSchema = new mongoose.Schema(
     minimumGraduationYear: Number,
     maximumGraduationYear: Number,
     requiredSkills: { type: [String], default: [] },
+    experienceLevel: { type: String, enum: ["entry", "junior", "mid", "senior", "any"], default: "entry" },
+    benefits: { type: [String], default: [] },
+    screeningQuestions: { type: [String], default: [] },
     deadline: Date,
     status: {
       type: String,

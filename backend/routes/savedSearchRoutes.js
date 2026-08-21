@@ -1,0 +1,1 @@
+const express=require('express'); const protect=require('../middleware/authMiddleware'); const authorize=require('../middleware/roleMiddleware'); const c=require('../controllers/savedSearchController'); const r=express.Router(); r.use(protect,authorize('student')); r.get('/',c.mySavedSearches); r.post('/',c.saveSearch); r.delete('/:id',c.deleteSavedSearch); module.exports=r;

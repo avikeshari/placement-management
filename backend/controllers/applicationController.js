@@ -3,6 +3,7 @@ const Application = require("../models/Application");
 const Job = require("../models/Job");
 const Profile = require("../models/Profile");
 const AcademicRecord = require("../models/AcademicRecord");
+const Notification = require("../models/Notification");
 const sendEmail = require("../utils/sendEmail");
 const Interview = require("../models/Interview");
 const User = require("../models/User");
@@ -13,6 +14,8 @@ exports.applyForJob = async (req, res) => {
 
   try {
     let createdApplication;
+    const coverLetter = String(req.body.coverLetter || "").trim();
+    if (coverLetter.length > 5000) return res.status(400).json({ success:false, message:"Cover letter must be 5000 characters or fewer" });
 
     await session.withTransaction(async () => {
       const job = await Job.findOne({
@@ -71,6 +74,7 @@ exports.applyForJob = async (req, res) => {
           status: "applied",
           appliedAt: new Date(),
           statusUpdatedAt: new Date(),
+          coverLetter,
           resume: {
             url: profile.resume.url,
             downloadUrl: "",
@@ -252,7 +256,7 @@ exports.updateApplicationStatus = async (req, res) => {
     const previousStatus = application.status;
     const updated = await Application.findOneAndUpdate(
       { _id: application._id, status: previousStatus },
-      { $set: { status, statusUpdatedAt: new Date() } },
+      { $set: { status, statusUpdatedAt: new Date(), ...(status === "selected" ? { offerStatus: "pending", offerUpdatedAt: new Date() } : {}) } },
       { new: true }
     );
 
@@ -262,6 +266,8 @@ exports.updateApplicationStatus = async (req, res) => {
         message: "The application changed while you were updating it. Refresh and try again."
       });
     }
+
+    try { await Notification.create({ user: application.student._id, title: "Application status updated", message: `Your application for ${application.job.title} is now ${status}.`, type: "application", link: "/student/applications" }); } catch (n) { console.error("Status notification failed:", n.message); }
 
     try {
       await sendEmail({
@@ -280,3 +286,5 @@ exports.updateApplicationStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: "Unable to update application status" });
   }
 };
+
+exports.respondToOffer = async (req,res)=>{try{const {response}=req.body;if(!["accepted","declined"].includes(response))return res.status(400).json({success:false,message:"Invalid offer response"});const a=await Application.findOne({_id:req.params.id,student:req.user._id,status:"selected"}).populate("job","title company");if(!a)return res.status(404).json({success:false,message:"Selected offer not found"});a.offerStatus=response;a.offerUpdatedAt=new Date();await a.save();res.json({success:true,message:`Offer ${response} successfully`,application:a});}catch(e){res.status(500).json({success:false,message:"Unable to update offer"});}};

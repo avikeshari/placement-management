@@ -1,0 +1,1 @@
+const express=require('express'); const protect=require('../middleware/authMiddleware'); const authorize=require('../middleware/roleMiddleware'); const c=require('../controllers/savedJobController'); const r=express.Router(); r.use(protect,authorize('student')); r.get('/',c.mySavedJobs); r.post('/:jobId',c.saveJob); r.delete('/:jobId',c.unsaveJob); module.exports=r;

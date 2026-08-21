@@ -35,6 +35,16 @@ const interviewSchema = new mongoose.Schema(
     },
     studentResponseMessage: { type: String, trim: true, default: "" },
     studentRespondedAt: { type: Date, default: null },
+    feedback: {
+      rating: { type: Number, min: 1, max: 5, default: null },
+      technicalSkills: { type: String, trim: true, default: "" },
+      communication: { type: String, trim: true, default: "" },
+      recommendation: { type: String, enum: ["", "hire", "hold", "reject"], default: "" },
+      comments: { type: String, trim: true, default: "" },
+      submittedAt: { type: Date, default: null }
+    },
+    reminder24SentAt: { type: Date, default: null },
+    reminder1SentAt: { type: Date, default: null },
     status: {
       type: String,
       enum: ["scheduled", "completed", "cancelled"],

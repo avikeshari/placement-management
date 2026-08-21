@@ -1,0 +1,2 @@
+const express=require('express');const protect=require('../middleware/authMiddleware');const authorize=require('../middleware/roleMiddleware');const c=require('../controllers/driveController');const r=express.Router();
+r.get('/',protect,c.list);r.post('/',protect,authorize('admin'),c.create);r.patch('/:id',protect,authorize('admin'),c.update);r.post('/:id/join',protect,authorize('student'),c.join);r.get('/:id/report',protect,authorize('admin'),c.report);module.exports=r;

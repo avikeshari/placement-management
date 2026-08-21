@@ -62,6 +62,17 @@ test('Student eligibility is calculated from AcademicRecord', () => {
   assert.ok(src.includes('Verified academic record is required'));
 });
 
+test('Academic eligibility requires a verified record and demo/import flows verify records', () => {
+  const model = read('backend/models/AcademicRecord.js');
+  const jobs = read('backend/controllers/jobController.js');
+  const importController = read('backend/controllers/academicController.js');
+  const seed = read('backend/scripts/seedDemoUsers.js');
+  assert.ok(model.includes('verified: { type: Boolean, default: false'));
+  assert.ok(jobs.includes('academicRecord.verified !== true'));
+  assert.ok(importController.includes('verified: true'));
+  assert.ok(seed.includes('verified: true'));
+});
+
 test('Application endpoint requires student role', () => {
   const src = read('backend/routes/applicationRoutes.js');
   assert.ok(src.includes('authorize("student")'));
@@ -166,6 +177,12 @@ test('Manual meeting-link approach is documented', () => {
 test('Netlify production API configuration uses /api', () => {
   const src = read('frontend/.env.example');
   assert.ok(src.includes('VITE_API_URL=/api'));
+});
+
+test('Student placement drives route is registered', () => {
+  const src = read('frontend/src/App.jsx');
+  assert.ok(src.includes('path="/student/drives"'));
+  assert.ok(src.includes('<StudentDrives />'));
 });
 
 test('Messaging models enforce one conversation per application', () => {

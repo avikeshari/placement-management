@@ -28,7 +28,11 @@ const academicRecordSchema = new mongoose.Schema(
     graduationYear: Number,
     cgpa: Number,
     backlogs: { type: Number, default: 0 },
-    skills: { type: [String], default: [] }
+    skills: { type: [String], default: [] },
+    achievements: { type: [String], default: [] },
+    transcriptUrl: { type: String, default: "" },
+    transcriptName: { type: String, default: "" },
+    verified: { type: Boolean, default: false, index: true },
   },
   { timestamps: true }
 );

@@ -1,0 +1,1 @@
+const express=require('express'); const protect=require('../middleware/authMiddleware'); const authorize=require('../middleware/roleMiddleware'); const c=require('../controllers/auditLogController'); const r=express.Router(); r.use(protect,authorize('admin')); r.get('/',c.adminAuditLogs); module.exports=r;

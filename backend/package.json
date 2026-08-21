@@ -6,7 +6,9 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed:demo": "node scripts/seedDemoUsers.js",
-    "admin:create": "node scripts/createProductionAdmin.js"
+    "admin:create": "node scripts/createProductionAdmin.js",
+    "test:audit": "node scripts/testAudit.js",
+    "test:benchmark": "node scripts/testBenchmark.js"
   },
   "dependencies": {
     "axios": "^1.8.4",
@@ -20,7 +22,7 @@
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.13.0",
+    "mongoose": "^8.13.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^7.0.3",
     "streamifier": "^0.1.1"

@@ -60,6 +60,33 @@ const profileSchema = new mongoose.Schema(
       default: ""
     },
 
+    privacy: {
+      type: String,
+      enum: ["private", "employers", "community"],
+      default: "private"
+    },
+
+    shareGpaWithEmployers: {
+      type: Boolean,
+      default: false
+    },
+
+    jobInterests: { type: [String], default: [] },
+    preferredLocations: { type: [String], default: [] },
+    preferredJobTypes: { type: [String], default: [] },
+    experience: { type: [String], default: [] },
+    projects: { type: [String], default: [] },
+    organizations: { type: [String], default: [] },
+    certifications: { type: [String], default: [] },
+    notificationPreferences: {
+      email: { type: Boolean, default: true },
+      inApp: { type: Boolean, default: true },
+      interviewReminders: { type: Boolean, default: true },
+      jobAlerts: { type: Boolean, default: true },
+      applicationUpdates: { type: Boolean, default: true },
+      marketing: { type: Boolean, default: false }
+    },
+
     location: {
       type: String,
       trim: true,

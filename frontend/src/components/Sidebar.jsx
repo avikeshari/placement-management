@@ -10,7 +10,9 @@ import {
   BarChart3,
   FileSpreadsheet,
   UserRoundCog,
-  MessageCircle
+  MessageCircle,
+  CalendarRange,
+  UserCheck
 } from "lucide-react";
 
 import { NavLink } from "react-router-dom";
@@ -42,6 +44,13 @@ const Sidebar = () => {
         icon: FileText
       },
       { label: "Interviews", path: "/student/interviews", icon: CalendarDays },
+      { label: "Placement Drives", path: "/student/drives", icon: CalendarDays },
+      { label: "Saved Jobs", path: "/student/saved-jobs", icon: BriefcaseBusiness },
+      { label: "Saved Searches", path: "/student/saved-searches", icon: FileText },
+      { label: "Career Events", path: "/student/events", icon: CalendarRange },
+      { label: "Notifications", path: "/student/notifications", icon: MessageCircle },
+      { label: "Career Resources", path: "/student/resources", icon: FileText },
+      { label: "Privacy & Preferences", path: "/student/settings", icon: UserRoundCog },
       { label: "Messages", path: "/messages", icon: MessageCircle }
     ],
     company: [
@@ -70,7 +79,10 @@ const Sidebar = () => {
         path: "/company/interviews",
         icon: CalendarDays
       },
-      { label: "Messages", path: "/messages", icon: MessageCircle }
+      { label: "Messages", path: "/messages", icon: MessageCircle },
+      { label: "Talent Search", path: "/company/talent", icon: Users },
+      { label: "Saved Candidates", path: "/company/saved-candidates", icon: UserCheck },
+      { label: "Notifications", path: "/company/notifications", icon: MessageCircle }
     ],
     admin: [
       { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
@@ -82,6 +94,10 @@ const Sidebar = () => {
       { label: "Analytics", path: "/admin/analytics", icon: BarChart3 },
       { label: "Academic Import", path: "/admin/academic-import", icon: Upload },
       { label: "Reports", path: "/admin/reports", icon: FileSpreadsheet },
+      { label: "Placement Drives", path: "/admin/drives", icon: CalendarRange },
+      { label: "Employer Verification", path: "/admin/verification", icon: UserCheck },
+      { label: "Career Events", path: "/admin/events", icon: CalendarRange },
+      { label: "Audit Logs", path: "/admin/audit-logs", icon: FileSpreadsheet },
       { label: "Profile", path: "/admin/profile", icon: UserRoundCog }
     ]
   };
@@ -89,7 +105,7 @@ const Sidebar = () => {
   const items = menus[user?.role] || [];
 
   return (
-    <aside className="bg-white border-r w-full md:w-64 md:min-h-[calc(100vh-4rem)]">
+    <aside className="theme-panel border-r w-full md:w-64 md:min-h-[calc(100vh-4rem)]">
       <nav className="flex md:flex-col overflow-x-auto gap-1 p-3">
         {items.map(({ label, path, icon: Icon }) => (
           <NavLink

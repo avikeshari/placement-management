@@ -1,0 +1,1 @@
+export default function ProfileVisibility({value,onChange}){return <div><label className="block font-medium mb-2">Profile visibility</label><select value={value} onChange={onChange} className="border rounded-lg px-3 py-2 w-full"><option value="private">Private</option><option value="employers">Employers</option><option value="community">Community</option></select></div>}

@@ -11,6 +11,8 @@ const Interview = require("../models/Interview");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const AcademicRecord = require("../models/AcademicRecord");
+const CareerEvent = require("../models/CareerEvent");
+const PlacementDrive = require("../models/PlacementDrive");
 const connectDB = require("../config/db");
 
 const users = [
@@ -25,7 +27,7 @@ async function upsertDemoUser(demo) {
   const password = await bcrypt.hash(demo.password, 12);
   return User.findOneAndUpdate(
     { email: demo.email },
-    { $set: { name: demo.name, email: demo.email, password, role: demo.role, isActive: true } },
+    { $set: { name: demo.name, email: demo.email, password, role: demo.role, isActive: true, isVerified: demo.role === "company" || demo.role === "admin" } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   );
 }
@@ -109,7 +111,12 @@ async function seedDemoData({ reset = false } = {}) {
         graduationYear: 2027,
         cgpa: 8.7,
         skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
-        location: "Prayagraj, Uttar Pradesh"
+        location: "Prayagraj, Uttar Pradesh",
+        privacy: "employers",
+        shareGpaWithEmployers: true,
+        jobInterests: ["Software Developer", "Frontend Developer", "Backend Developer"],
+        preferredLocations: ["Bengaluru", "Hyderabad", "Pune"],
+        preferredJobTypes: ["job", "internship"]
       },
       $setOnInsert: { user: student._id }
     },
@@ -129,7 +136,8 @@ async function seedDemoData({ reset = false } = {}) {
         graduationYear: 2027,
         cgpa: 8.7,
         backlogs: 0,
-        skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git", "HTML", "CSS", "REST API", "Express"]
+        skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git", "HTML", "CSS", "REST API", "Express"],
+        verified: true
       }
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -296,6 +304,47 @@ async function seedDemoData({ reset = false } = {}) {
     hour: "2-digit",
     minute: "2-digit"
   });
+
+  // Keep demo career events available for students and admins to exercise the event workflow.
+  const eventStart = futureDate(5, 10, 0);
+  const eventEnd = futureDate(5, 16, 0);
+  await CareerEvent.findOneAndUpdate(
+    { title: "Demo Career Fair" },
+    {
+      $set: {
+        title: "Demo Career Fair",
+        description: "Meet recruiters, explore open roles and learn about placement opportunities.",
+        type: "career_fair",
+        startAt: eventStart,
+        endAt: eventEnd,
+        location: "ABC Institute of Technology",
+        meetingUrl: "https://meet.google.com/demo-career-fair",
+        capacity: 100,
+        status: "published"
+      },
+      $setOnInsert: { attendees: [] }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  // Keep a future demo placement drive so the student drive page is not empty.
+  const driveStart = futureDate(7, 9, 0);
+  const driveEnd = futureDate(7, 17, 0);
+  await PlacementDrive.findOneAndUpdate(
+    { name: "Demo Placement Drive" },
+    {
+      $set: {
+        name: "Demo Placement Drive",
+        description: "Demo placement drive for testing student registration and company participation.",
+        startAt: driveStart,
+        endAt: driveEnd,
+        location: "ABC Institute of Technology",
+        status: "open",
+        companies: [company._id]
+      }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   const interview = await Interview.create({
     application: backendApplication._id,

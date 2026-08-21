@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibilityReasons = [] }) => {
+const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibilityReasons = [], onSave, onFollowCompany }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
@@ -8,7 +8,7 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
       <article className="bg-white border rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col">
         <div className="flex-1">
           <h2 className="text-xl font-semibold">{job.title}</h2>
-          <p className="text-slate-500 mt-1">{job.company?.name || "Company"}</p>
+          <p className="text-slate-500 mt-1">{job.company?.name || "Company"} {job.company?.isVerified ? <span className="text-xs text-emerald-600">✓ Verified</span> : null}</p>
           <p className="mt-4 text-slate-700 line-clamp-3">{job.description}</p>
           <div className="mt-5 text-sm space-y-2">
             <p><strong>Location:</strong> {job.location || "Not specified"}</p>
@@ -19,6 +19,8 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
           </div>
         </div>
 
+        {typeof job.matchScore === "number" && <div className="mt-3 rounded-lg bg-blue-50 text-blue-700 px-3 py-2 text-sm"><strong>{job.matchScore}% match</strong> — {job.recommendationReason}</div>}
+
         {job.eligibility && (
           <div className={`mt-4 rounded-lg px-3 py-2 text-sm ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
             <strong>{eligible ? "✓ Eligible" : "Not eligible"}</strong>
@@ -27,6 +29,20 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
         )}
 
         <div className="mt-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onSave?.(job._id)}
+            className="border border-slate-300 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50"
+          >
+            Save Job
+          </button>
+          <button
+            type="button"
+            onClick={() => onFollowCompany?.(job.company?._id)}
+            className="border border-slate-300 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-50"
+          >
+            Follow Company
+          </button>
           <button
             type="button"
             onClick={() => setShowDetails(true)}
@@ -50,7 +66,7 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold">{job.title}</h2>
-                <p className="text-slate-500 mt-1">{job.company?.name || "Company"}</p>
+                <p className="text-slate-500 mt-1">{job.company?.name || "Company"} {job.company?.isVerified ? <span className="text-xs text-emerald-600">✓ Verified</span> : null}</p>
               </div>
               <button type="button" onClick={() => setShowDetails(false)} className="text-slate-500 hover:text-slate-900 text-xl">×</button>
             </div>

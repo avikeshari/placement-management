@@ -35,6 +35,7 @@ exports.getStats = async (req, res) => {
       interviews,
       selected,
       rejected,
+      offersAccepted,
       placedStudents,
       salaryStats
     ] = await Promise.all([
@@ -47,6 +48,7 @@ exports.getStats = async (req, res) => {
       Interview.countDocuments(),
       Application.countDocuments({ status: "selected" }),
       Application.countDocuments({ status: "rejected" }),
+      Application.countDocuments({ status: "selected", offerStatus: "accepted" }),
       Application.distinct("student", { status: "selected" }),
       Job.aggregate([
         { $match: { isDeleted: false, salary: { $type: "number", $gt: 0 } } },
@@ -77,6 +79,7 @@ exports.getStats = async (req, res) => {
         interviews,
         selected,
         rejected,
+        offersAccepted,
         placements: placedStudents.length,
         placementRate,
         averageSalary: Math.round(salaryStats[0]?.average || 0),
@@ -92,7 +95,7 @@ exports.getStats = async (req, res) => {
 exports.getStudents = async (req, res) => {
   try {
     const students = await User.find({ role: "student" })
-      .select("name email role isActive createdAt")
+      .select("name email role isActive isVerified createdAt")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -123,7 +126,7 @@ exports.getStudents = async (req, res) => {
 exports.getCompanies = async (req, res) => {
   try {
     const companies = await User.find({ role: "company" })
-      .select("name email role isActive createdAt")
+      .select("name email role isActive isVerified createdAt")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -342,6 +345,8 @@ exports.deleteJob = async (req, res) => {
   }
 };
 
+exports.getDriveReport=async(req,res)=>{try{const Drive=require("../models/PlacementDrive");const drives=await Drive.find().populate("companies","name").lean();return sendCsv(res,"placement-drives.csv",["Drive","Start","End","Status","Companies","Participants"],drives.map(d=>[d.name,d.startAt?.toISOString(),d.endAt?.toISOString(),d.status,(d.companies||[]).map(c=>c.name).join("; "),(d.participants||[]).length]));}catch(e){res.status(500).json({success:false,message:e.message});}};
+
 exports.getReport = async (req, res) => {
   try {
     const { type } = req.params;
@@ -407,3 +412,6 @@ exports.getReport = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.exportCompanyDatabase=async(req,res)=>{try{const companies=await User.find({role:"company"}).lean();const profiles=await Profile.find({user:{$in:companies.map(x=>x._id)}}).lean();const map=new Map(profiles.map(x=>[String(x.user),x]));return sendCsv(res,"company-database.csv",["Name","Email","Phone","Industry","Website","Location","Description"],companies.map(c=>{const p=map.get(String(c._id))||{};return [c.name,c.email,p.phone,p.industry,p.website,p.location,p.description];}));}catch(e){res.status(500).json({success:false,message:e.message});}};
+exports.importCompanyDatabase=async(req,res)=>{try{if(!req.file)return res.status(400).json({success:false,message:"Please upload a CSV file"});const csv=require("csv-parser");const {Readable}=require("stream");const rows=[];await new Promise((resolve,reject)=>Readable.from(req.file.buffer).pipe(csv()).on("data",r=>rows.push(r)).on("end",resolve).on("error",reject));let count=0;for(const row of rows){const email=String(row.email||row.Email||"").trim().toLowerCase();if(!email)continue;const user=await User.findOne({email,role:"company"});if(!user)continue;await Profile.findOneAndUpdate({user:user._id},{$set:{phone:row.phone||row.Phone||"",industry:row.industry||row.Industry||"",website:row.website||row.Website||"",location:row.location||row.Location||"",description:row.description||row.Description||""}},{upsert:true});count++;}res.json({success:true,message:`Updated ${count} existing company records`});}catch(e){res.status(500).json({success:false,message:"Unable to import company CSV"});}};

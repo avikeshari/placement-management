@@ -21,14 +21,28 @@ import StudentProfile from "./pages/student/Profile";
 import StudentJobs from "./pages/student/Jobs";
 import StudentApplications from "./pages/student/Applications";
 import StudentInterviews from "./pages/student/Interviews";
+import StudentDrives from "./pages/student/Drives";
+import SavedJobs from "./pages/student/SavedJobs";
+import SavedSearches from "./pages/student/SavedSearches";
+import StudentEvents from "./pages/student/Events";
+import StudentNotifications from "./pages/student/Notifications";
+import StudentResources from "./pages/student/CareerResources";
+import StudentSettings from "./pages/student/PrivacySettings";
+import ResumePreparation from "./pages/student/resources/ResumePreparation";
+import InterviewPreparation from "./pages/student/resources/InterviewPreparation";
+import PlacementChecklist from "./pages/student/resources/PlacementChecklist";
+import ProfessionalCommunication from "./pages/student/resources/ProfessionalCommunication";
 
 import CompanyDashboard from "./pages/company/Dashboard";
-import CompanyProfile from "./pages/company/Profile";
+import CompanyProfile from "./pages/company/CompanyProfile";
 import CompanyJobs from "./pages/company/Jobs";
 import PostJob from "./pages/company/PostJob";
 import EditJob from "./pages/company/EditJob";
 import Applicants from "./pages/company/Applicants";
 import CompanyInterviews from "./pages/company/Interviews";
+import TalentSearch from "./pages/company/TalentSearch";
+import CompanySavedCandidates from "./pages/company/SavedCandidates";
+import CompanyNotifications from "./pages/company/Notifications";
 
 import AdminDashboard from "./pages/admin/Dashboard";
 import AcademicImport from "./pages/admin/AcademicImport";
@@ -40,6 +54,10 @@ import AdminInterviews from "./pages/admin/Interviews";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminReports from "./pages/admin/Reports";
 import AdminProfile from "./pages/admin/Profile";
+import AdminDrives from "./pages/admin/Drives";
+import AdminVerification from "./pages/admin/Verification";
+import AdminAuditLogs from "./pages/admin/AuditLogs";
+import AdminEvents from "./pages/admin/Events";
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -104,6 +122,22 @@ const App = () => {
             path="/student/interviews"
             element={<StudentInterviews />}
           />
+
+          <Route
+            path="/student/drives"
+            element={<StudentDrives />}
+          />
+
+          <Route path="/student/saved-jobs" element={<SavedJobs />} />
+          <Route path="/student/saved-searches" element={<SavedSearches />} />
+          <Route path="/student/events" element={<StudentEvents />} />
+          <Route path="/student/notifications" element={<StudentNotifications />} />
+          <Route path="/student/resources" element={<StudentResources />} />
+          <Route path="/student/resources/resume" element={<ResumePreparation />} />
+          <Route path="/student/resources/interview" element={<InterviewPreparation />} />
+          <Route path="/student/resources/checklist" element={<PlacementChecklist />} />
+          <Route path="/student/resources/communication" element={<ProfessionalCommunication />} />
+          <Route path="/student/settings" element={<StudentSettings />} />
         </Route>
       </Route>
 
@@ -147,6 +181,9 @@ const App = () => {
             path="/company/interviews"
             element={<CompanyInterviews />}
           />
+          <Route path="/company/talent" element={<TalentSearch />} />
+          <Route path="/company/saved-candidates" element={<CompanySavedCandidates />} />
+          <Route path="/company/notifications" element={<CompanyNotifications />} />
         </Route>
       </Route>
 
@@ -170,6 +207,10 @@ const App = () => {
           <Route path="/admin/academic-import" element={<AcademicImport />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/profile" element={<AdminProfile />} />
+          <Route path="/admin/drives" element={<AdminDrives />} />
+          <Route path="/admin/verification" element={<AdminVerification />} />
+          <Route path="/admin/audit-logs" element={<AdminAuditLogs />} />
+          <Route path="/admin/events" element={<AdminEvents />} />
         </Route>
       </Route>
 

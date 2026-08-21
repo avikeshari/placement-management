@@ -14,7 +14,7 @@ const EditJob = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const today = useMemo(localDate, []);
-  const [form, setForm] = useState({ title: "", description: "", location: "", salary: "", minimumCGPA: "", maxBacklogs: "0", eligibleBranches: "", minimumGraduationYear: "", maximumGraduationYear: "", requiredSkills: "", deadline: "" });
+  const [form, setForm] = useState({ title: "", type: "job", description: "", location: "", salary: "", minimumCGPA: "", maxBacklogs: "0", eligibleBranches: "", minimumGraduationYear: "", maximumGraduationYear: "", requiredSkills: "", deadline: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -24,6 +24,7 @@ const EditJob = () => {
         const job = data.job;
         setForm({
           title: job.title || "",
+          type: job.type || "job",
           description: job.description || "",
           location: job.location || "",
           salary: job.salary ?? "",
@@ -63,6 +64,7 @@ const EditJob = () => {
       await api.put(`/jobs/${jobId}`, {
         title: form.title.trim(),
         description: form.description.trim(),
+        type: form.type,
         location: form.location.trim(),
         salary,
         minimumCGPA: cgpa,

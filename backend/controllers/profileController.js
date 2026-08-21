@@ -5,6 +5,7 @@ const Interview = require("../models/Interview");
 const Job = require("../models/Job");
 const cloudinary = require("../config/cloudinary");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
+const AcademicRecord = require("../models/AcademicRecord");
 
 exports.getStudentProfileForCompany = async (req, res) => {
   try {
@@ -111,7 +112,16 @@ exports.updateProfile = async (req, res) => {
       website,
       industry,
       description,
-      location
+      location,
+      privacy,
+      shareGpaWithEmployers,
+      jobInterests,
+      preferredLocations,
+      preferredJobTypes,
+      experience,
+      projects,
+      organizations,
+      certifications
     } = req.body;
 
     const normalizedSkills = Array.isArray(skills)
@@ -132,7 +142,16 @@ exports.updateProfile = async (req, res) => {
       website,
       industry,
       description,
-      location
+      location,
+      privacy: ["private","employers","community"].includes(privacy) ? privacy : undefined,
+      shareGpaWithEmployers: Boolean(shareGpaWithEmployers),
+      jobInterests: Array.isArray(jobInterests) ? jobInterests : [],
+      preferredLocations: Array.isArray(preferredLocations) ? preferredLocations : [],
+      preferredJobTypes: Array.isArray(preferredJobTypes) ? preferredJobTypes : [],
+      experience: Array.isArray(experience) ? experience : [],
+      projects: Array.isArray(projects) ? projects : [],
+      organizations: Array.isArray(organizations) ? organizations : [],
+      certifications: Array.isArray(certifications) ? certifications : []
     };
 
     if (graduationYear !== undefined && graduationYear !== null && graduationYear !== "") {
@@ -168,9 +187,13 @@ exports.updateProfile = async (req, res) => {
         }
       );
 
+    if (req.user.role === "student") {
+      await AcademicRecord.findOneAndUpdate({ user: req.user._id }, { $set: { studentEmail: req.user.email, college: profile.college || "", course: profile.course || "", branch: profile.branch || "", graduationYear: profile.graduationYear, cgpa: profile.cgpa, skills: profile.skills || [] } }, { upsert: true, new: true, setDefaultsOnInsert: true });
+    }
+
     return res.json({
       success: true,
-      message: "Profile updated successfully",
+      message: "Profile updated successfully and academic record synchronized",
       profile
     });
   } catch (error) {

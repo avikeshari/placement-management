@@ -81,6 +81,19 @@ const Applications = () => {
               <p className="text-slate-600 whitespace-pre-line mt-1">{application.job?.description || "No description available."}</p>
             </div>
 
+            {application.status === "selected" && (
+              <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="font-semibold text-emerald-800">Placement Offer</p>
+                <p className="text-sm text-emerald-700 mt-1">Status: {application.offerStatus || "pending"}</p>
+                {(!application.offerStatus || application.offerStatus === "pending") && (
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={async()=>{try{await api.patch(`/applications/${application._id}/offer`,{response:"accepted"});toast.success("Offer accepted");await load();}catch(e){toast.error(getErrorMessage(e,"Unable to accept offer."));}}} className="bg-emerald-600 text-white px-4 py-2 rounded-lg">Accept Offer</button>
+                    <button onClick={async()=>{try{await api.patch(`/applications/${application._id}/offer`,{response:"declined"});toast.success("Offer declined");await load();}catch(e){toast.error(getErrorMessage(e,"Unable to decline offer."));}}} className="bg-red-600 text-white px-4 py-2 rounded-lg">Decline Offer</button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {application.resume?.downloadUrl && (
               <a href={application.resume.downloadUrl} target="_blank" rel="noreferrer" className="inline-block mt-5 text-blue-600 font-medium">Download submitted resume</a>
             )}

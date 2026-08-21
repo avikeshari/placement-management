@@ -1,0 +1,1 @@
+export default function JobMatchBadge({score,reason}){if(score==null)return null;return <div className="inline-flex flex-col rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2"><span className="font-semibold text-emerald-700">{score}% match</span>{reason&&<span className="text-xs text-emerald-700">{reason}</span>}</div>}

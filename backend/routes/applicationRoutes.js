@@ -7,7 +7,8 @@ const {
   getMyApplications,
   getJobApplications,
   updateApplicationStatus,
-  withdrawApplication
+  withdrawApplication,
+  respondToOffer
 } = require("../controllers/applicationController");
 
 const router = express.Router();
@@ -37,7 +38,15 @@ router.delete(
   "/:id/withdraw",
   protect,
   authorize("student"),
-  withdrawApplication
+  withdrawApplication,
+  respondToOffer
+);
+
+router.patch(
+  "/:id/offer",
+  protect,
+  authorize("student"),
+  respondToOffer
 );
 
 router.patch(

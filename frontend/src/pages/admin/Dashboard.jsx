@@ -45,6 +45,7 @@ const Dashboard = () => {
     ["Applications", stats.applications, FileText],
     ["Interviews", stats.interviews, CalendarDays],
     ["Selected", stats.selected, Award],
+    ["Offers Accepted", stats.offersAccepted || 0, Award],
     ["Placements", stats.placements, UserCheck],
     ["Placement Rate", `${stats.placementRate}%`, TrendingUp]
   ];
