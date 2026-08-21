@@ -89,11 +89,11 @@ Use the same GitHub repository with:
 
 ```text
 Root Directory: backend
-Build Command: npm install
+Build Command: npm ci
 Start Command: npm start
 ```
 
-Add the backend variables from `backend/.env.example` in Render. In particular, configure `MONGO_URI`, `JWT_SECRET`, Cloudinary credentials, `FRONTEND_URL`, and the email variables if email notifications are enabled. Never commit the real `backend/.env`.
+Add the backend variables from `backend/.env.example` in Render. The application expects `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `FRONTEND_URL`, the three Cloudinary variables, and the SMTP variables shown in the example. `DAILY_API_KEY` is not required; interviews use the manual meeting-link approach. Never commit the real `backend/.env`.
 
 Set:
 
@@ -117,7 +117,11 @@ Production frontend environment variable:
 VITE_API_URL=/api
 ```
 
-`frontend/netlify.toml` proxies `/api/*` to the Render backend while keeping the user-facing site on the Netlify URL.
+`frontend/netlify.toml` proxies `/api/*` to the Render backend (`https://placement-management-br31.onrender.com`) while keeping the user-facing site on the Netlify URL. Keep the Netlify `VITE_API_URL` value as `/api`; do not replace it with the Render URL.
+
+### Local Vite development proxy
+
+For local development, `frontend/vite.config.js` proxies `/api/*` to `http://localhost:5000`. Keep `VITE_API_URL=/api` so the same frontend API paths work locally and on Netlify.
 
 The public pages remain:
 

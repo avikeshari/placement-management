@@ -7,6 +7,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const connectDB = require("./config/db");
+const validateEnvironment = require("./config/env");
 const createProductionAdmin = require("./scripts/createProductionAdmin");
 const seedDemoData = require("./scripts/seedDemoUsers");
 const notFound = require("./middleware/notFoundMiddleware");
@@ -15,12 +16,14 @@ const { runInterviewReminders } = require("./utils/interviewReminders");
 
 const app = express();
 
+const environment = validateEnvironment();
+
 app.use(helmet());
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  process.env.FRONTEND_URL
+  environment.frontendUrl
 ].filter(Boolean).map((origin) => origin.replace(/\/$/, ""));
 
 app.use(
@@ -78,7 +81,7 @@ app.use("/api/saved-candidates", require("./routes/savedCandidateRoutes"));
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+const PORT = environment.port;
 
 const startServer = async () => {
   try {
@@ -95,7 +98,7 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
       console.log(
-        `Environment: ${process.env.NODE_ENV || "development"}`
+        `Environment: ${environment.nodeEnv}`
       );
     });
   } catch (error) {

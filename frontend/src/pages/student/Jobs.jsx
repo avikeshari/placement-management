@@ -43,9 +43,9 @@ const Jobs = () => {
 
   const appliedIds = useMemo(() => new Set(applications.map((a) => String(a.job?._id || a.job))), [applications]);
 
-  const saveJob = async (jobId) => { try { await api.post(`/benchmark/saved-jobs/${jobId}`); toast.success("Job saved"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save job")); } };
-  const followCompany = async (companyId) => { if (!companyId) return; try { await api.post(`/benchmark/companies/${companyId}/follow`); toast.success("Company followed"); } catch (e) { toast.error(getErrorMessage(e,"Unable to follow company")); } };
-  const saveSearch = async () => { try { const name = window.prompt("Name this search", filters.q || filters.skill || "My job search"); if (!name) return; await api.post("/benchmark/saved-searches", { name, query: filters, alertsEnabled: true }); toast.success("Search saved and alerts enabled"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save search")); } };
+  const saveJob = async (jobId) => { try { await api.post(`/saved-jobs/${jobId}`); toast.success("Job saved"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save job")); } };
+  const followCompany = async (companyId) => { if (!companyId) return; try { await api.post(`/company-follows/${companyId}`); toast.success("Company followed"); } catch (e) { toast.error(getErrorMessage(e,"Unable to follow company")); } };
+  const saveSearch = async () => { try { const name = window.prompt("Name this search", filters.q || filters.skill || "My job search"); if (!name) return; await api.post("/saved-searches", { name, query: filters, alertsEnabled: true }); toast.success("Search saved and alerts enabled"); } catch (e) { toast.error(getErrorMessage(e,"Unable to save search")); } };
 
   const applyForJob = async (jobId) => {
     const coverLetter = window.prompt("Optional cover letter (you can leave this blank):", "") || "";
