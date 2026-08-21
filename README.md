@@ -52,21 +52,73 @@ VITE_API_URL=http://localhost:5000/api
 
 ## Demo credentials
 
-The following credentials are recommended for demonstration/testing:
+The demo seed creates multiple students and companies so every major placement workflow has realistic data to inspect. The original demo credentials remain unchanged.
+
+### Students
+
+| Role | Email | Password | Demo profile |
+|---|---|---|---|
+| Student 1 | `student.demo@aviportal.com` | `Student@123` | CSE, 8.7 CGPA, React/Node/MongoDB |
+| Student 2 | `student2.demo@aviportal.com` | `Student2@123` | IT, 8.1 CGPA, Java/Spring/SQL |
+| Student 3 | `student3.demo@aviportal.com` | `Student3@123` | ECE, 7.8 CGPA, Python/SQL/Power BI |
+| Student 4 | `student4.demo@aviportal.com` | `Student4@123` | CSE, 7.2 CGPA, frontend/UI skills, 1 backlog |
+
+### Companies
+
+| Role | Email | Password | Demo profile |
+|---|---|---|---|
+| Company 1 | `company.demo@aviportal.com` | `Company@123` | Information Technology, Bengaluru |
+| Company 2 | `company2.demo@aviportal.com` | `Company2@123` | Data & Analytics, Pune |
+| Company 3 | `company3.demo@aviportal.com` | `Company3@123` | Financial Technology, Hyderabad |
+
+### Admin
 
 | Role | Email | Password |
 |---|---|---|
-| Student | `student.demo@aviportal.com` | `Student@123` |
-| Company | `company.demo@aviportal.com` | `Company@123` |
 | Admin | `admin.demo@aviportal.com` | `Admin@123` |
 
-These credentials can be created automatically with the included demo seed script. From `backend/`, configure `MONGO_URI` and run:
+### Seeded demo data
+
+Running `npm run seed:demo` creates or updates the demo dataset without creating duplicate demo users. The current seed provides:
+
+- **4 student profiles** with academic records, CGPA, branch, skills, preferences, projects, certifications and demo resumes.
+- **3 company profiles** with contact details, websites, industries, descriptions and locations.
+- **8 open jobs** across the three demo companies, including full-time jobs and internships.
+- **Multiple application states** for testing: applied, shortlisted, interview, selected, rejected and withdrawn.
+- **Unapplied jobs** so the Student Jobs and Apply flow can be tested from a clean state.
+- **1 scheduled online interview** with a manual meeting link for the original demo student.
+- **1 demo conversation/message thread** connected to that interview application.
+- **1 career event** and **1 placement drive** with the demo companies attached.
+
+The main `student.demo@aviportal.com` account is intentionally kept in a useful mixed state:
+
+| Job | Application state | Interview |
+|---|---|---|
+| Frontend Developer | Applied | No |
+| Full Stack Developer | Shortlisted | No |
+| Backend Developer | Interview | Scheduled |
+| QA Engineer | Not applied | No |
+| Data Analyst | Not applied | No |
+
+The other demo students provide additional company-side applicant records, including selected, rejected, withdrawn, applied and shortlisted applications. This makes the Applicant, Applications, Profile, Interviews and dashboard sections visibly populated immediately after seeding.
+
+### Refreshing demo data
+
+From `backend/`:
 
 ```bash
 npm run seed:demo
 ```
 
-The script creates/updates all three demo accounts and ensures demo student/company profiles, jobs, applications, and a sample interview exist. The backend also ensures this demo data exists automatically at startup. Do not use these passwords for a real production deployment.
+To remove the existing demo jobs/applications/interviews for the three demo companies and rebuild the complete demo dataset:
+
+```bash
+npm run seed:demo -- --reset
+```
+
+The reset operation is scoped to the known demo company accounts and does not intentionally delete unrelated production users or jobs.
+
+Do not use these demo passwords for a real production deployment.
 
 ## Permanent production admin
 
@@ -93,7 +145,7 @@ Build Command: npm ci
 Start Command: npm start
 ```
 
-Add the backend variables from `backend/.env.example` in Render. The application expects `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `FRONTEND_URL`, the three Cloudinary variables, and the SMTP variables shown in the example. `DAILY_API_KEY` is not required; interviews use the manual meeting-link approach. Never commit the real `backend/.env`.
+Add the backend variables from `backend/.env.example` in Render. The application expects `MONGO_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `FRONTEND_URL`, the three Cloudinary variables, and the SMTP variables shown in the example. No Daily API is used; interviews use the manual meeting-link approach. Never commit the real `backend/.env`.
 
 Set:
 
@@ -140,7 +192,7 @@ and Netlify forwards it to the Render backend.
 
 ### Online Interviews
 
-Online interviews use a **manual meeting-link approach**. No Daily API or Google Meet REST API is required.
+Online interviews use a **manual meeting-link approach**. No Daily video API or Google Meet REST API is required.
 
 When a company schedules an online interview, it enters:
 
@@ -245,7 +297,7 @@ The current version includes additional safeguards identified during the archite
 
 ## Online Interview Approach
 
-Online interviews use a **manual meeting-link approach**. No Daily API or Google Meet REST API is required.
+Online interviews use a **manual meeting-link approach**. No Daily video API or Google Meet REST API is required.
 
 When a company schedules an online interview, it enters:
 
@@ -423,3 +475,35 @@ The Student → Career Resources area is a four-section career center:
 - **Professional Communication** (`/student/resources/communication`) — recruiter communication guidance and copyable message templates.
 
 The readiness checklist does not store a separate manual completion flag. It derives completion from live placement data returned by `/api/profile/me`, `/api/academic/me`, `/api/applications/my`, `/api/interviews/my`, and `/api/drives`. Drive registration and interview-response items are shown as not applicable when there is no current drive or scheduled interview. The article pages include links to public university/career-service sources; their content is paraphrased rather than copied verbatim.
+
+## Render backend deployment
+
+The backend is designed to run from the `backend` directory. For Render, use:
+
+- Root Directory: `backend`
+- Build Command: `npm install`
+- Start Command: `npm start`
+- Health Check Path: `/api/health`
+- `NODE_ENV=production`
+- Do not hard-code Render's `PORT`; Render supplies it automatically.
+
+After deployment, verify these endpoints:
+
+- `GET /api/health` should return `Placement API is healthy`.
+- `GET /api/auth` should return `Authentication API is available`.
+- `POST /api/auth/login` is the login endpoint.
+- `POST /api/auth/register` is the registration endpoint.
+
+If `/api/health` works but `/api/auth` returns `Route ... not found`, the deployed Render service is not running the same backend commit that contains `server.js` and `routes/authRoutes.js`. Redeploy the latest commit and confirm the Render root directory is `backend`.
+
+## Authentication deployment verification
+
+After deploying the backend to Render, verify these endpoints directly:
+
+- `GET /api/health` should return `success: true` and an `apiVersion`.
+- `GET /api/auth` should return `Authentication API is available`.
+- `GET /api/auth/login` should return HTTP 405 and state that login requires POST.
+- `GET /api/auth/register` should return HTTP 405 and state that registration requires POST.
+- The frontend should use `VITE_API_URL=/api` on Netlify; `frontend/netlify.toml` proxies `/api/*` to the Render backend.
+
+If `/api/health` works but `/api/auth` returns `Route /api/auth not found`, Render is serving an older/different commit or the service Root Directory is not `backend`. Check the Render deployment commit and service Root Directory before changing frontend authentication code.
