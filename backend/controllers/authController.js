@@ -5,9 +5,17 @@ const generateToken = require("../utils/generateToken");
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = "student" } = req.body;
+    const { name, password, role = "student" } = req.body;
+    const emailAddress = email?.trim().toLowerCase();
 
-    const existingUser = await User.findOne({ email });
+    if (!name?.trim() || !emailAddress || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and password are required"
+      });
+    }
+
+    const existingUser = await User.findOne({ email: emailAddress });
 
     if (existingUser) {
       return res.status(409).json({
@@ -20,7 +28,7 @@ exports.register = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: emailAddress,
       password: hashedPassword,
       role: role === "company" ? "company" : "student"
     });
