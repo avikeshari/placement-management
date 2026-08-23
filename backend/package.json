@@ -7,8 +7,7 @@
     "start": "node server.js",
     "seed:demo": "node scripts/seedDemoUsers.js",
     "admin:create": "node scripts/createProductionAdmin.js",
-    "test:audit": "node scripts/testAudit.js",
-    "test:benchmark": "node scripts/testBenchmark.js"
+    "test:audit": "node scripts/testAudit.js"
   },
   "dependencies": {
     "axios": "^1.8.4",

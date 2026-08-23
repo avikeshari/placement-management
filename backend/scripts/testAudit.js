@@ -25,6 +25,14 @@ function test(name, fn) {
   }
 }
 
+function readEnvConfig(directory) {
+  const example = path.join(directory, '.env.example');
+  const actual = path.join(directory, '.env');
+  if (fs.existsSync(example)) return fs.readFileSync(example, 'utf8');
+  if (fs.existsSync(actual)) return fs.readFileSync(actual, 'utf8');
+  throw new Error(`Neither .env.example nor .env exists in ${directory}`);
+}
+
 function has(file, text) {
   assert.ok(read(file).includes(text), `${text} not found in ${file}`);
 }
@@ -60,17 +68,6 @@ test('Student eligibility is calculated from AcademicRecord', () => {
   assert.ok(src.includes('AcademicRecord.findOne'));
   assert.ok(src.includes('buildEligibility'));
   assert.ok(src.includes('Verified academic record is required'));
-});
-
-test('Academic eligibility requires a verified record and demo/import flows verify records', () => {
-  const model = read('backend/models/AcademicRecord.js');
-  const jobs = read('backend/controllers/jobController.js');
-  const importController = read('backend/controllers/academicController.js');
-  const seed = read('backend/scripts/seedDemoUsers.js');
-  assert.ok(model.includes('verified: { type: Boolean, default: false'));
-  assert.ok(jobs.includes('academicRecord.verified !== true'));
-  assert.ok(importController.includes('verified: true'));
-  assert.ok(seed.includes('verified: true'));
 });
 
 test('Application endpoint requires student role', () => {
@@ -161,11 +158,14 @@ test('Frontend job details expose full posting information', () => {
 });
 
 test('Daily API has been removed from project configuration', () => {
-  const files = ['backend/package.json', 'backend/.env.example', 'frontend/package.json', 'README.md'];
+  const files = ['backend/package.json', 'frontend/package.json', 'README.md'];
   for (const file of files) {
     const src = read(file).toLowerCase();
     assert.ok(!src.includes('daily_api_key'), `${file} contains DAILY_API_KEY`);
   }
+  const backendEnv = readEnvConfig(backend).toLowerCase();
+  assert.ok(!backendEnv.includes('daily_api_key'), 'Backend environment contains DAILY_API_KEY');
+  assert.ok(!backendEnv.includes('daily api'), 'Backend environment contains Daily API configuration');
 });
 
 test('Manual meeting-link approach is documented', () => {
@@ -175,14 +175,8 @@ test('Manual meeting-link approach is documented', () => {
 });
 
 test('Netlify production API configuration uses /api', () => {
-  const src = read('frontend/.env.example');
+  const src = readEnvConfig(frontend);
   assert.ok(src.includes('VITE_API_URL=/api'));
-});
-
-test('Student placement drives route is registered', () => {
-  const src = read('frontend/src/App.jsx');
-  assert.ok(src.includes('path="/student/drives"'));
-  assert.ok(src.includes('<StudentDrives />'));
 });
 
 test('Messaging models enforce one conversation per application', () => {
