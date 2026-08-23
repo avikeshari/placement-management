@@ -18,6 +18,8 @@ import Messages from "./pages/Messages";
 
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
+import StudentAcademicRecord from "./pages/student/AcademicRecord";
+import StudentFollowing from "./pages/student/Following";
 import StudentJobs from "./pages/student/Jobs";
 import StudentApplications from "./pages/student/Applications";
 import StudentInterviews from "./pages/student/Interviews";
@@ -107,6 +109,9 @@ const App = () => {
             path="/student/profile"
             element={<StudentProfile />}
           />
+
+          <Route path="/student/academic" element={<StudentAcademicRecord />} />
+          <Route path="/student/following" element={<StudentFollowing />} />
 
           <Route
             path="/student/jobs"

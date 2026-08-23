@@ -11,6 +11,8 @@ const Interview = require("../models/Interview");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const AcademicRecord = require("../models/AcademicRecord");
+const Event = require("../models/Event");
+const PlacementDrive = require("../models/PlacementDrive");
 const connectDB = require("../config/db");
 
 const users = [
@@ -324,6 +326,22 @@ async function seedDemoData({ reset = false } = {}) {
     sender: company._id,
     body: "Hello Demo Student! We can use this chat for interview-related communication. Please let us know if you have any questions before the interview."
   });
+
+  const eventStart = futureDate(7, 10, 0);
+  const eventEnd = futureDate(7, 15, 0);
+  await Event.findOneAndUpdate(
+    { title: "Demo Career Fair" },
+    { $set: { title: "Demo Career Fair", description: "Demo career fair for placement testing and employer networking.", type: "career_fair", startAt: eventStart, endAt: eventEnd, location: "ABC Institute Auditorium", meetingUrl: "", companies: [company._id], capacity: 200, status: "published" } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  const driveStart = futureDate(10, 9, 0);
+  const driveEnd = futureDate(10, 17, 0);
+  await PlacementDrive.findOneAndUpdate(
+    { name: "Demo Placement Drive" },
+    { $set: { name: "Demo Placement Drive", description: "Demo placement drive with participating company and student registration.", startAt: driveStart, endAt: driveEnd, location: "ABC Institute Placement Cell", companies: [company._id], status: "planned" } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   return {
     student,
