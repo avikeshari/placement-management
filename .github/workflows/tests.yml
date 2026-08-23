@@ -51,8 +51,13 @@ jobs:
 
   browser-e2e:
     name: Browser E2E smoke tests
-    if: ${{ secrets.E2E_BASE_URL != '' }}
     runs-on: ubuntu-latest
+    env:
+      E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      E2E_STUDENT_EMAIL: ${{ secrets.E2E_STUDENT_EMAIL }}
+      E2E_STUDENT_PASSWORD: ${{ secrets.E2E_STUDENT_PASSWORD }}
+      E2E_COMPANY_EMAIL: ${{ secrets.E2E_COMPANY_EMAIL }}
+      E2E_COMPANY_PASSWORD: ${{ secrets.E2E_COMPANY_PASSWORD }}
     defaults:
       run:
         working-directory: frontend
@@ -67,15 +72,12 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        if: ${{ env.E2E_BASE_URL != '' }}
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+        if: ${{ env.E2E_BASE_URL != '' }}
 
       - name: Run browser tests
-        env:
-          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          E2E_STUDENT_EMAIL: ${{ secrets.E2E_STUDENT_EMAIL }}
-          E2E_STUDENT_PASSWORD: ${{ secrets.E2E_STUDENT_PASSWORD }}
-          E2E_COMPANY_EMAIL: ${{ secrets.E2E_COMPANY_EMAIL }}
-          E2E_COMPANY_PASSWORD: ${{ secrets.E2E_COMPANY_PASSWORD }}
         run: npm run test:e2e
+        if: ${{ env.E2E_BASE_URL != '' }}
