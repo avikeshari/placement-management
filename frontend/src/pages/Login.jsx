@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../api/axios";
@@ -14,6 +14,15 @@ const Login = () => {
     password: ""
   });
   const [loading, setLoading] = useState(false);
+
+  // Render services can sleep when idle. Warm the API while the user is
+  // entering credentials so the login request is less likely to pay the
+  // cold-start cost. This request is intentionally non-blocking.
+  useEffect(() => {
+    api.get("/health").catch(() => {
+      // A warm-up failure must never prevent the user from signing in.
+    });
+  }, []);
 
   const submit = async (event) => {
     event.preventDefault();

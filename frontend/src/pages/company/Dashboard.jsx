@@ -15,12 +15,16 @@ const Dashboard = () => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [jobsRes, interviewsRes] = await Promise.all([api.get("/jobs/company/my"), api.get("/interviews/my")]);
-      setJobs(jobsRes.data.jobs || []);
-      setInterviews(interviewsRes.data.interviews || []);
+      setError("");
+      const response = await api.get("/company/dashboard");
+      const dashboard = response.data.dashboard || {};
+      setJobs(dashboard.jobs || []);
+      setInterviews(dashboard.upcomingInterviews || []);
     } catch (error) {
       setError(getErrorMessage(error, "Unable to load company dashboard."));
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
