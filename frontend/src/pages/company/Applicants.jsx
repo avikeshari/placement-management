@@ -56,7 +56,7 @@ const Applicants = () => {
         "Application status updated"
       );
 
-      load();
+      await load();
     } catch (error) {
       toast.error(
         getErrorMessage(
@@ -319,10 +319,10 @@ const Applicants = () => {
                 ].includes(application.status) && (
                   <>
                     <button
-                      onClick={() =>
-                        openSchedule(application)
-                      }
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                      type="button"
+                      disabled={updating === application._id}
+                      onClick={() => openSchedule(application)}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Schedule Interview
                     </button>
