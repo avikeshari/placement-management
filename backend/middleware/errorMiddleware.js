@@ -25,7 +25,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(err.statusCode || 500).json({
     success: false,
     message:
-      process.env.NODE_ENV === "production"
+      err.expose === false || process.env.NODE_ENV === "production"
         ? "Something went wrong"
         : err.message
   });

@@ -8,8 +8,8 @@ const COMPANY_PASSWORD = process.env.E2E_COMPANY_PASSWORD || "Company@123";
 async function login(page, email, password, expectedPath) {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Login" })).toBeVisible();
-  await page.getByPlaceholder("Email").fill(email);
-  await page.getByPlaceholder("Password").fill(password);
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await page.getByPlaceholder(/password|At least 6 characters/i).fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL(new RegExp(`${expectedPath.replaceAll("/", "\\/")}\\/?$`));
 }
@@ -35,9 +35,9 @@ test.describe("Public application smoke tests", () => {
 
     await page.goto("/register");
     await expect(page.getByRole("heading", { name: "Create Account" })).toBeVisible();
-    await expect(page.getByPlaceholder("Full name")).toBeVisible();
-    await expect(page.getByPlaceholder("Email")).toBeVisible();
-    await expect(page.getByPlaceholder("Password")).toBeVisible();
+    await expect(page.getByPlaceholder("Your full name")).toBeVisible();
+    await expect(page.getByPlaceholder("you@example.com")).toBeVisible();
+    await expect(page.getByPlaceholder("At least 6 characters")).toBeVisible();
     await expect(page.getByRole("button", { name: "Create Account" })).toBeVisible();
   });
 

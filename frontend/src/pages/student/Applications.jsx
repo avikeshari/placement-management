@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import getErrorMessage from "../../utils/getErrorMessage";
 import toast from "react-hot-toast";
 
@@ -11,6 +12,7 @@ const Applications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [withdrawing, setWithdrawing] = useState(null);
+  const [confirm, setConfirm] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -28,20 +30,50 @@ const Applications = () => {
   useEffect(() => { load(); }, [load]);
 
   const withdrawApplication = async (application) => {
-    const confirmed = window.confirm(
-      `Withdraw your application for ${application.job?.title || "this job"}? This action cannot be undone.`
-    );
-    if (!confirmed) return;
+    setConfirm({
+      type: "withdraw",
+      title: "Withdraw application?",
+      message: `Withdraw your application for ${application.job?.title || "this job"}? This action cannot be undone.`,
+      application
+    });
+  };
 
-    try {
-      setWithdrawing(application._id);
-      await api.delete(`/applications/${application._id}/withdraw`);
-      toast.success("Application withdrawn successfully");
-      await load();
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Unable to withdraw application."));
-    } finally {
-      setWithdrawing(null);
+  const runConfirmed = async () => {
+    if (!confirm) return;
+    const application = confirm.application;
+
+    if (confirm.type === "withdraw") {
+      try {
+        setWithdrawing(application._id);
+        await api.delete(`/applications/${application._id}/withdraw`);
+        toast.success("Application withdrawn successfully");
+        await load();
+      } catch (error) {
+        toast.error(getErrorMessage(error, "Unable to withdraw application."));
+      } finally {
+        setWithdrawing(null);
+        setConfirm(null);
+      }
+    } else if (confirm.type === "accept") {
+      try {
+        await api.patch(`/applications/${application._id}/offer`, { response: "accepted" });
+        toast.success("Offer accepted");
+        await load();
+      } catch (e) {
+        toast.error(getErrorMessage(e, "Unable to accept offer."));
+      } finally {
+        setConfirm(null);
+      }
+    } else if (confirm.type === "decline") {
+      try {
+        await api.patch(`/applications/${application._id}/offer`, { response: "declined" });
+        toast.success("Offer declined");
+        await load();
+      } catch (e) {
+        toast.error(getErrorMessage(e, "Unable to decline offer."));
+      } finally {
+        setConfirm(null);
+      }
     }
   };
 
@@ -87,8 +119,8 @@ const Applications = () => {
                 <p className="text-sm text-emerald-700 mt-1">Status: {application.offerStatus || "pending"}</p>
                 {(!application.offerStatus || application.offerStatus === "pending") && (
                   <div className="flex gap-2 mt-3">
-                    <button onClick={async()=>{try{await api.patch(`/applications/${application._id}/offer`,{response:"accepted"});toast.success("Offer accepted");await load();}catch(e){toast.error(getErrorMessage(e,"Unable to accept offer."));}}} className="bg-emerald-600 text-white px-4 py-2 rounded-lg">Accept Offer</button>
-                    <button onClick={async()=>{try{await api.patch(`/applications/${application._id}/offer`,{response:"declined"});toast.success("Offer declined");await load();}catch(e){toast.error(getErrorMessage(e,"Unable to decline offer."));}}} className="bg-red-600 text-white px-4 py-2 rounded-lg">Decline Offer</button>
+                    <button onClick={() => setConfirm({ type: "accept", title: "Accept placement offer?", message: "This will close any other pending offers you hold and cannot be undone.", application })} className="bg-emerald-600 text-white px-4 py-2 rounded-lg">Accept Offer</button>
+                    <button onClick={() => setConfirm({ type: "decline", title: "Decline placement offer?", message: "This action cannot be undone.", application, danger: true })} className="bg-red-600 text-white px-4 py-2 rounded-lg">Decline Offer</button>
                   </div>
                 )}
               </div>
@@ -113,6 +145,16 @@ const Applications = () => {
           </article>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.title}
+        message={confirm?.message}
+        confirmText={confirm?.type === "decline" ? "Decline" : confirm?.type === "accept" ? "Accept" : "Withdraw"}
+        danger={confirm?.danger || confirm?.type === "decline" || confirm?.type === "withdraw"}
+        onConfirm={runConfirmed}
+        onCancel={() => setConfirm(null)}
+      />
     </section>
   );
 };

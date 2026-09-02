@@ -20,6 +20,8 @@ const Applications = () => {
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +73,12 @@ const Applications = () => {
       return matchesSearch && matchesStatus;
     });
   }, [applications, query, status]);
+
+  useEffect(() => { setPage(1); }, [filtered]);
+
+  const start = (page - 1) * pageSize;
+  const visibleRows = filtered.slice(start, start + pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize);
 
   if (loading) {
     return <Loader text="Loading applications..." />;
@@ -157,7 +165,7 @@ const Applications = () => {
             </thead>
 
             <tbody>
-              {filtered.map((item) => (
+              {visibleRows.map((item) => (
                 <tr
                   key={item._id}
                   className="border-t"
@@ -194,6 +202,13 @@ const Applications = () => {
               ))}
             </tbody>
           </table>
+          {filtered.length > pageSize && (
+            <div className="flex items-center justify-between px-5 py-4 border-t">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg disabled:opacity-50">Previous</button>
+              <span className="text-slate-600">Page {page} of {totalPages}</span>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg disabled:opacity-50">Next</button>
+            </div>
+          )}
         </div>
       )}
     </section>

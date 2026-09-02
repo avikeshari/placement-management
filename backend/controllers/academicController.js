@@ -142,8 +142,16 @@ exports.importAcademicRecords = async (req, res) => {
     }
 
     await session.withTransaction(async () => {
+      const emails = prepared.map((item) => item.studentEmail);
+      const users = await User.find({ email: { $in: emails }, role: "student" })
+        .select("_id email")
+        .session(session)
+        .lean();
+      const userByEmail = new Map(users.map((u) => [u.email.toLowerCase(), u]));
+
+      const ops = [];
       for (const item of prepared) {
-        const user = await User.findOne({ email: item.studentEmail, role: "student" }).session(session);
+        const user = userByEmail.get(item.studentEmail.toLowerCase());
         if (!user) {
           const error = new Error(`Row ${item.rowNumber}: student account not found for ${item.studentEmail}`);
           error.statusCode = 400;
@@ -164,11 +172,22 @@ exports.importAcademicRecords = async (req, res) => {
         if (item.graduationYear !== undefined) record.graduationYear = item.graduationYear;
         if (item.cgpa !== undefined) record.cgpa = item.cgpa;
 
-        await AcademicRecord.findOneAndUpdate(
-          { user: user._id },
-          { $set: record },
-          { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true, session }
-        );
+        ops.push({
+          updateOne: {
+            filter: { user: user._id },
+            update: { $set: record },
+            upsert: true
+          }
+        });
+      }
+
+      if (ops.length) {
+        await AcademicRecord.bulkWrite(ops, {
+          session,
+          ordered: true,
+          runValidators: true,
+          setDefaultsOnInsert: true
+        });
       }
     });
 

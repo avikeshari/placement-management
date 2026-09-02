@@ -19,6 +19,7 @@ import {
 import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import ErrorState from "../../components/ErrorState";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Profile = () => {
@@ -29,6 +30,8 @@ const Profile = () => {
   const [openingResume, setOpeningResume] = useState(false);
   const [downloadingResume, setDownloadingResume] =
     useState(false);
+  const [confirmAction, setConfirmAction] =
+    useState(null);
   const [error, setError] = useState("");
   const [resume, setResume] = useState(null);
   const [academicRecord, setAcademicRecord] =
@@ -197,9 +200,15 @@ const Profile = () => {
 
   const handleResumeUpload =
     async () => {
-      if (!resume) {
+      // Read the file input as a fallback. This also handles browsers
+      // where the React state has not updated before the button click.
+      const fileInput = document.getElementById("resume");
+      const selectedResume =
+        resume || fileInput?.files?.[0] || null;
+
+      if (!selectedResume) {
         toast.error(
-          "Please select a resume first."
+          "Please choose a PDF, DOC or DOCX resume before uploading."
         );
         return;
       }
@@ -212,7 +221,7 @@ const Profile = () => {
 
         formData.append(
           "resume",
-          resume
+          selectedResume
         );
 
         const response =
@@ -430,13 +439,12 @@ const Profile = () => {
         return;
       }
 
-      const confirmed =
-        window.confirm(
-          "Are you sure you want to delete your resume? This cannot be undone."
-        );
+      setConfirmAction(
+        "resume"
+      );
+    };
 
-      if (!confirmed) return;
-
+  const doResumeDelete = async () => {
       try {
         setUploading(true);
 
@@ -463,18 +471,18 @@ const Profile = () => {
         );
       } finally {
         setUploading(false);
+        setConfirmAction(null);
       }
     };
 
   const handleDeleteAccount =
     async () => {
-      const confirmed =
-        window.confirm(
-          "Delete your account permanently? Your profile, applications, interviews and uploaded resume will be removed. This cannot be undone."
-        );
+      setConfirmAction(
+        "account"
+      );
+    };
 
-      if (!confirmed) return;
-
+  const doDeleteAccount = async () => {
       try {
         setSaving(true);
 
@@ -505,6 +513,7 @@ const Profile = () => {
         );
       } finally {
         setSaving(false);
+        setConfirmAction(null);
       }
     };
 
@@ -584,8 +593,9 @@ const Profile = () => {
               </span>
 
               <p className="font-semibold">
-                {academicRecord.backlogs ??
-                  0}
+                {academicRecord.backlogs === undefined || academicRecord.backlogs === null
+                  ? "-"
+                  : academicRecord.backlogs}
               </p>
             </div>
           </div>
@@ -948,6 +958,27 @@ const Profile = () => {
           </button>
         </div>
       </section>
+
+      <ConfirmDialog
+        open={confirmAction === "resume"}
+        title="Delete resume?"
+        message="Are you sure you want to delete your resume? This cannot be undone."
+        confirmText="Delete Resume"
+        danger
+        loading={uploading}
+        onConfirm={doResumeDelete}
+        onCancel={() => setConfirmAction(null)}
+      />
+      <ConfirmDialog
+        open={confirmAction === "account"}
+        title="Delete your account?"
+        message="Delete your account permanently? Your profile, applications, interviews and uploaded resume will be removed. This cannot be undone."
+        confirmText="Delete Account"
+        danger
+        loading={saving}
+        onConfirm={doDeleteAccount}
+        onCancel={() => setConfirmAction(null)}
+      />
     </section>
   );
 };

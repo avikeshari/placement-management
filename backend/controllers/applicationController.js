@@ -8,6 +8,7 @@ const sendEmail = require("../utils/sendEmail");
 const Interview = require("../models/Interview");
 const User = require("../models/User");
 const { buildEligibility } = require("./jobController");
+const escapeHtml = require("../utils/escapeHtml");
 
 exports.applyForJob = async (req, res) => {
   const session = await mongoose.startSession();
@@ -111,12 +112,14 @@ exports.applyForJob = async (req, res) => {
 exports.getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ student: req.user._id })
+      .select("-coverLetter -screeningAnswers -statusHistory -rejectionReason -withdrawalReason -resume.url -resume.publicId -resume.originalName -resume.resourceType -resume.deliveryType -resume.format")
       .populate({
         path: "job",
         select: "title description location salary deadline status company minimumCGPA maxBacklogs eligibleBranches minimumGraduationYear maximumGraduationYear requiredSkills isDeleted",
         populate: { path: "company", select: "name email" }
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.json({ success: true, applications });
   } catch (error) {
@@ -135,9 +138,11 @@ exports.getJobApplications = async (req, res) => {
     if (!job) return res.status(404).json({ success: false, message: "Job not found" });
 
     const applications = await Application.find({ job: job._id })
+      .select("-coverLetter -screeningAnswers -statusHistory -rejectionReason -withdrawalReason -resume")
       .populate("student", "name email")
       .populate("job", "title description location salary deadline minimumCGPA maxBacklogs eligibleBranches minimumGraduationYear maximumGraduationYear requiredSkills")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.json({ success: true, applications });
   } catch (error) {
@@ -147,6 +152,7 @@ exports.getJobApplications = async (req, res) => {
 
 
 exports.withdrawApplication = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
     const application = await Application.findOne({
       _id: req.params.id,
@@ -165,18 +171,21 @@ exports.withdrawApplication = async (req, res) => {
     }
 
     const previousStatus = application.status;
-    application.status = "withdrawn";
-    application.statusUpdatedAt = new Date();
-    await application.save();
 
-    const interview = await Interview.findOne({ application: application._id, status: "scheduled" });
-    if (interview) {
-      interview.status = "cancelled";
-      interview.studentResponse = "declined";
-      interview.studentResponseMessage = "The student withdrew the application and can no longer attend the interview.";
-      interview.studentRespondedAt = new Date();
-      await interview.save();
-    }
+    await session.withTransaction(async () => {
+      application.status = "withdrawn";
+      application.statusUpdatedAt = new Date();
+      await application.save({ session });
+
+      const interview = await Interview.findOne({ application: application._id, status: "scheduled" }).session(session);
+      if (interview) {
+        interview.status = "cancelled";
+        interview.studentResponse = "declined";
+        interview.studentResponseMessage = "The student withdrew the application and can no longer attend the interview.";
+        interview.studentRespondedAt = new Date();
+        await interview.save({ session });
+      }
+    });
 
     try {
       const studentName = req.user.name || "The student";
@@ -184,7 +193,7 @@ exports.withdrawApplication = async (req, res) => {
         to: (await User.findById(application.job.company).select("email"))?.email,
         subject: `Application Withdrawn - ${application.job.title}`,
         text: `${studentName} has withdrawn their application for ${application.job.title}.${previousStatus === "interview" ? " Any scheduled interview has also been cancelled." : ""}`,
-        html: `<h2>Application Withdrawn</h2><p><strong>${studentName}</strong> has withdrawn their application for <strong>${application.job.title}</strong>.</p>${previousStatus === "interview" ? "<p>Any scheduled interview has also been cancelled.</p>" : ""}`
+        html: `<h2>Application Withdrawn</h2><p><strong>${escapeHtml(studentName)}</strong> has withdrawn their application for <strong>${escapeHtml(application.job.title)}</strong>.</p>${previousStatus === "interview" ? "<p>Any scheduled interview has also been cancelled.</p>" : ""}`
       });
     } catch (emailError) {
       console.error("Withdrawal email failed:", emailError.message);
@@ -198,6 +207,8 @@ exports.withdrawApplication = async (req, res) => {
   } catch (error) {
     console.error("Withdraw application error:", error);
     return res.status(500).json({ success: false, message: "Unable to withdraw application" });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -224,7 +235,7 @@ exports.updateApplicationStatus = async (req, res) => {
       shortlisted: ["shortlisted", "interview", "selected", "rejected"],
       interview: ["interview", "selected", "rejected"],
       selected: ["selected"],
-      rejected: ["rejected"],
+      rejected: ["rejected", "applied", "shortlisted"],
       withdrawn: ["withdrawn"]
     };
 
@@ -256,7 +267,14 @@ exports.updateApplicationStatus = async (req, res) => {
     const previousStatus = application.status;
     const updated = await Application.findOneAndUpdate(
       { _id: application._id, status: previousStatus },
-      { $set: { status, statusUpdatedAt: new Date(), ...(status === "selected" ? { offerStatus: "pending", offerUpdatedAt: new Date() } : {}) } },
+      {
+        $set: {
+          status,
+          statusUpdatedAt: new Date(),
+          ...(status === "selected" ? { offerStatus: "pending", offerUpdatedAt: new Date() } : {}),
+          ...(status !== "selected" ? { offerStatus: null, offerUpdatedAt: null } : {})
+        }
+      },
       { new: true }
     );
 
@@ -274,7 +292,7 @@ exports.updateApplicationStatus = async (req, res) => {
         to: application.student.email,
         subject: "Application Status Updated",
         text: `Your application for ${application.job.title} is now ${status}.`,
-        html: `<h2>Application Update</h2><p>Hello ${application.student.name},</p><p>Your application for <strong>${application.job.title}</strong> is now <strong>${status}</strong>.</p>`
+        html: `<h2>Application Update</h2><p>Hello ${escapeHtml(application.student.name)},</p><p>Your application for <strong>${escapeHtml(application.job.title)}</strong> is now <strong>${status}</strong>.</p>`
       });
     } catch (emailError) {
       console.error("Status email failed:", emailError.message);
@@ -287,4 +305,32 @@ exports.updateApplicationStatus = async (req, res) => {
   }
 };
 
-exports.respondToOffer = async (req,res)=>{try{const {response}=req.body;if(!["accepted","declined"].includes(response))return res.status(400).json({success:false,message:"Invalid offer response"});const a=await Application.findOne({_id:req.params.id,student:req.user._id,status:"selected"}).populate("job","title company");if(!a)return res.status(404).json({success:false,message:"Selected offer not found"});a.offerStatus=response;a.offerUpdatedAt=new Date();await a.save();res.json({success:true,message:`Offer ${response} successfully`,application:a});}catch(e){res.status(500).json({success:false,message:"Unable to update offer"});}};
+exports.respondToOffer = async (req, res) => {
+  try {
+    const { response } = req.body;
+    if (!["accepted", "declined"].includes(response)) {
+      return res.status(400).json({ success: false, message: "Invalid offer response" });
+    }
+
+    const a = await Application.findOne({ _id: req.params.id, student: req.user._id, status: "selected" }).populate("job", "title company");
+    if (!a) return res.status(404).json({ success: false, message: "Selected offer not found" });
+
+    if (response === "accepted") {
+      // Revoke any other pending "selected" offers the student may hold so a
+      // student cannot accept placements from two companies simultaneously.
+      await Application.updateMany(
+        { student: req.user._id, status: "selected", _id: { $ne: a._id }, $or: [{ offerStatus: { $in: [null, "pending"] } }, { offerStatus: { $exists: false } }] },
+        { $set: { offerStatus: "declined", offerUpdatedAt: new Date() } }
+      );
+      try { await Notification.create({ user: req.user._id, title: "Other offers closed", message: "Your other pending placement offers have been closed because you accepted a placement offer.", type: "application", link: "/student/applications" }); } catch (n) { console.error("Offer revocation notification failed:", n.message); }
+    }
+
+    a.offerStatus = response;
+    a.offerUpdatedAt = new Date();
+    await a.save();
+
+    res.json({ success: true, message: `Offer ${response} successfully`, application: a });
+  } catch (e) {
+    res.status(500).json({ success: false, message: "Unable to update offer" });
+  }
+};

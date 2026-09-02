@@ -5,6 +5,7 @@ import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Interviews = () => {
@@ -12,6 +13,7 @@ const Interviews = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -42,20 +44,21 @@ const Interviews = () => {
   }, [load]);
 
   const cancelInterview = async (interview) => {
-    const confirmed = window.confirm(
-      `Cancel the interview with ${interview.student?.name || "this candidate"}?`
-    );
-    if (!confirmed) return;
+    setCancelTarget(interview);
+  };
 
+  const doCancel = async () => {
+    if (!cancelTarget) return;
     try {
-      setCancelling(interview._id);
-      await api.patch(`/interviews/${interview._id}/cancel`);
+      setCancelling(cancelTarget._id);
+      await api.patch(`/interviews/${cancelTarget._id}/cancel`);
       toast.success("Interview cancelled and candidate notified");
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to cancel interview."));
     } finally {
       setCancelling(null);
+      setCancelTarget(null);
     }
   };
 
@@ -211,7 +214,7 @@ const Interviews = () => {
             </div>
 
             {interview.status === "scheduled" && <button type="button" onClick={async()=>{try{await api.patch(`/interviews/${interview._id}/complete`);toast.success("Interview marked completed");await load()}catch(e){toast.error(getErrorMessage(e,"Unable to complete interview."))}}} className="mt-4 border px-4 py-2 rounded-lg">Mark Completed</button>}
-            {interview.status === "completed" && <div className="mt-4 border rounded-xl p-4"><p className="font-semibold">Interview Feedback</p><div className="grid md:grid-cols-2 gap-3 mt-3"><input id={`rating-${interview._id}`} type="number" min="1" max="5" placeholder="Rating 1-5" className="border rounded-lg px-3 py-2"/><input id={`recommendation-${interview._id}`} placeholder="Recommendation: hire / hold / reject" className="border rounded-lg px-3 py-2"/><input id={`technical-${interview._id}`} placeholder="Technical skills feedback" className="border rounded-lg px-3 py-2"/><input id={`communication-${interview._id}`} placeholder="Communication feedback" className="border rounded-lg px-3 py-2"/><textarea id={`comments-${interview._id}`} placeholder="Comments" className="md:col-span-2 border rounded-lg px-3 py-2"/></div><button className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg" onClick={async()=>{const v=id=>document.getElementById(`${id}-${interview._id}`)?.value;try{await api.patch(`/interviews/${interview._id}/feedback`,{rating:v('rating'),recommendation:v('recommendation'),technicalSkills:v('technical'),communication:v('communication'),comments:v('comments')});toast.success("Feedback saved");await load()}catch(e){toast.error(getErrorMessage(e,"Unable to save feedback."))}}}>Save Feedback</button></div>}
+            {interview.status === "completed" && <FeedbackForm interviewId={interview._id} onSaved={load} />}
 
             {interview.mode === "offline" && (
               <p className="mt-5 text-slate-600">
@@ -222,7 +225,92 @@ const Interviews = () => {
           </article>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        title="Cancel interview?"
+        message={cancelTarget ? `Cancel the interview with ${cancelTarget.student?.name || "this candidate"}?` : ""}
+        confirmText="Cancel Interview"
+        danger
+        loading={!!cancelling}
+        onConfirm={doCancel}
+        onCancel={() => setCancelTarget(null)}
+      />
     </section>
+  );
+};
+
+const FeedbackForm = ({ interviewId, onSaved }) => {
+  const [feedback, setFeedback] = useState({
+    rating: "",
+    recommendation: "",
+    technicalSkills: "",
+    communication: "",
+    comments: ""
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = (field) => (event) => setFeedback((prev) => ({ ...prev, [field]: event.target.value }));
+  const disabled = saving || !feedback.rating;
+
+  const save = async () => {
+    try {
+      setSaving(true);
+      await api.patch(`/interviews/${interviewId}/feedback`, {
+        rating: Number(feedback.rating),
+        recommendation: feedback.recommendation,
+        technicalSkills: feedback.technicalSkills,
+        communication: feedback.communication,
+        comments: feedback.comments
+      });
+      toast.success("Feedback saved");
+      await onSaved();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to save feedback."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border rounded-xl p-4">
+      <p className="font-semibold">Interview Feedback</p>
+      <div className="grid md:grid-cols-2 gap-3 mt-3">
+        <div>
+          <label htmlFor={`rating-${interviewId}`} className="block text-xs font-medium text-slate-600 mb-1">Rating (1-5)</label>
+          <input id={`rating-${interviewId}`} type="number" min="1" max="5" value={feedback.rating} onChange={handleChange("rating")} className="border rounded-lg px-3 py-2 w-full" />
+        </div>
+        <div>
+          <label htmlFor={`recommendation-${interviewId}`} className="block text-xs font-medium text-slate-600 mb-1">Recommendation</label>
+          <select id={`recommendation-${interviewId}`} value={feedback.recommendation} onChange={handleChange("recommendation")} className="border rounded-lg px-3 py-2 w-full">
+            <option value="">Select recommendation</option>
+            <option value="hire">Hire</option>
+            <option value="hold">Hold</option>
+            <option value="reject">Reject</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor={`technical-${interviewId}`} className="block text-xs font-medium text-slate-600 mb-1">Technical skills</label>
+          <input id={`technical-${interviewId}`} type="text" value={feedback.technicalSkills} onChange={handleChange("technicalSkills")} className="border rounded-lg px-3 py-2 w-full" />
+        </div>
+        <div>
+          <label htmlFor={`communication-${interviewId}`} className="block text-xs font-medium text-slate-600 mb-1">Communication</label>
+          <input id={`communication-${interviewId}`} type="text" value={feedback.communication} onChange={handleChange("communication")} className="border rounded-lg px-3 py-2 w-full" />
+        </div>
+        <div className="md:col-span-2">
+          <label htmlFor={`comments-${interviewId}`} className="block text-xs font-medium text-slate-600 mb-1">Comments</label>
+          <textarea id={`comments-${interviewId}`} rows={2} value={feedback.comments} onChange={handleChange("comments")} className="md:col-span-2 w-full border rounded-lg px-3 py-2" />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={save}
+        disabled={disabled}
+        className="mt-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500 text-white px-4 py-2 rounded-lg"
+      >
+        {saving ? "Saving..." : "Save Feedback"}
+      </button>
+    </div>
   );
 };
 

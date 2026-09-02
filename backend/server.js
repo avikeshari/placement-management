@@ -53,6 +53,18 @@ app.use(
   })
 );
 
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1"
+});
+
+// Apply a general rate limit to all API routes to mitigate scraping and
+// brute-force abuse beyond the stricter auth limit.
+app.use("/api", generalLimiter);
+
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -73,7 +85,6 @@ app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/academic", require("./routes/academicRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/drives", require("./routes/driveRoutes"));
-app.use("/api/benchmark", require("./routes/benchmarkRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 app.use("/api/saved-searches", require("./routes/savedSearchRoutes"));
@@ -113,10 +124,13 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    // Automatically create/check the permanent production admin
-    // and ensure the demo account/profile data exists.
+    // Automatically create/check the permanent production admin.
+    // Demo data is only seeded in non-production environments, and never
+    // overwrites the credentials of already-existing demo accounts.
     await createProductionAdmin();
-    await seedDemoData();
+    if (environment.nodeEnv !== "production") {
+      await seedDemoData();
+    }
 
     setInterval(() => runInterviewReminders().catch((error) => console.error("Interview reminder job failed:", error.message)), 15 * 60 * 1000);
     runInterviewReminders().catch((error) => console.error("Initial interview reminder check failed:", error.message));
@@ -124,7 +138,7 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${environment.nodeEnv}`);
-      console.log("Mounted API routes: /api/health, /api/auth, /api/profile, /api/jobs, /api/applications, /api/interviews, /api/messages, /api/academic, /api/admin, /api/drives, /api/benchmark, /api/notifications, /api/saved-jobs, /api/saved-searches, /api/company-follows, /api/candidate-search, /api/career-events, /api/audit-logs, /api/saved-candidates");
+      console.log("Mounted API routes: /api/health, /api/auth, /api/profile, /api/jobs, /api/applications, /api/interviews, /api/messages, /api/academic, /api/admin, /api/drives, /api/notifications, /api/saved-jobs, /api/saved-searches, /api/company-follows, /api/candidate-search, /api/career-events, /api/audit-logs, /api/saved-candidates");
     });
   } catch (error) {
     console.error(

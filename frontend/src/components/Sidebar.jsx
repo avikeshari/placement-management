@@ -22,7 +22,10 @@ import {
   BadgeCheck,
   UserSearch,
   Star,
-  Settings
+  Settings,
+  Rocket,
+  Sparkles,
+  GraduationCap
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -31,7 +34,7 @@ const menus = {
   student: [
     { label: "Dashboard", path: "/student", icon: LayoutDashboard },
     { label: "Profile", path: "/student/profile", icon: UserRound },
-    { label: "Academic Records", path: "/student/academic", icon: BookOpen },
+    { label: "Academic Records", path: "/student/academic", icon: GraduationCap },
     { label: "Jobs", path: "/student/jobs", icon: BriefcaseBusiness },
     { label: "Saved Jobs", path: "/student/saved-jobs", icon: Bookmark },
     { label: "Applications", path: "/student/applications", icon: FileText },
@@ -40,8 +43,8 @@ const menus = {
     { label: "Notifications", path: "/student/notifications", icon: Bell },
     { label: "Saved Searches & Alerts", path: "/student/saved-searches", icon: Search },
     { label: "Following", path: "/student/following", icon: Heart },
-    { label: "Placement Drives", path: "/student/drives", icon: CalendarRange },
-    { label: "Career Events", path: "/student/events", icon: CalendarRange },
+    { label: "Placement Drives", path: "/student/drives", icon: Rocket },
+    { label: "Career Events", path: "/student/events", icon: Sparkles },
     { label: "Career Resources", path: "/student/resources", icon: BookOpen },
     { label: "Placement Checklist", path: "/student/resources/checklist", icon: ClipboardCheck },
     { label: "Privacy & Preferences", path: "/student/settings", icon: Settings }
@@ -64,8 +67,8 @@ const menus = {
     { label: "Jobs", path: "/admin/jobs", icon: BriefcaseBusiness },
     { label: "Applications", path: "/admin/applications", icon: FileText },
     { label: "Interviews", path: "/admin/interviews", icon: CalendarDays },
-    { label: "Placement Drives", path: "/admin/drives", icon: CalendarRange },
-    { label: "Career Events", path: "/admin/events", icon: CalendarRange },
+    { label: "Placement Drives", path: "/admin/drives", icon: Rocket },
+    { label: "Career Events", path: "/admin/events", icon: Sparkles },
     { label: "Employer Verification", path: "/admin/verification", icon: BadgeCheck },
     { label: "Analytics", path: "/admin/analytics", icon: BarChart3 },
     { label: "Academic Records", path: "/admin/academic-import", icon: Upload },

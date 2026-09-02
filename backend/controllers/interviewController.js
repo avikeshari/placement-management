@@ -3,6 +3,7 @@ const Interview = require("../models/Interview");
 const sendEmail = require("../utils/sendEmail");
 const Conversation = require("../models/Conversation");
 const Notification = require("../models/Notification");
+const escapeHtml = require("../utils/escapeHtml");
 
 const isValidMeetingUrl = (value) => {
   try {
@@ -32,7 +33,7 @@ const buildInterviewHtml = ({ studentName, jobTitle, companyName, scheduledAt, m
     hour: "2-digit", minute: "2-digit", timeZoneName: "short"
   });
 
-  return `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b"><h2>Interview Scheduled</h2><p>Dear ${studentName},</p><p>You have been selected for an interview for the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong>.</p><p><strong>Date:</strong> ${dateText}</p><p><strong>Time:</strong> ${timeText}</p><p><strong>Mode:</strong> ${mode === "online" ? "Online" : "Offline"}</p>${mode === "online" ? `<p><strong>Meeting Link:</strong><br/><a href="${meetingUrl}">${meetingUrl}</a></p>` : `<p><strong>Location:</strong> ${location}</p>`}<p>Please join the interview on time and keep the required documents ready.</p><p>Best wishes,<br/><strong>${companyName}</strong></p></div>`;
+  return `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b"><h2>Interview Scheduled</h2><p>Dear ${escapeHtml(studentName)},</p><p>You have been selected for an interview for the <strong>${escapeHtml(jobTitle)}</strong> position at <strong>${escapeHtml(companyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(dateText)}</p><p><strong>Time:</strong> ${escapeHtml(timeText)}</p><p><strong>Mode:</strong> ${mode === "online" ? "Online" : "Offline"}</p>${mode === "online" ? `<p><strong>Meeting Link:</strong><br/><a href="${escapeHtml(meetingUrl)}">${escapeHtml(meetingUrl)}</a></p>` : `<p><strong>Location:</strong> ${escapeHtml(location)}</p>`}<p>Please join the interview on time and keep the required documents ready.</p><p>Best wishes,<br/><strong>${escapeHtml(companyName)}</strong></p></div>`;
 };
 
 const findConflicts = async ({ studentId, companyId, start, durationMinutes }) => {
@@ -97,10 +98,6 @@ exports.scheduleInterview = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized to schedule this interview" });
     }
     if (!application.student) return res.status(400).json({ success: false, message: "Candidate account is unavailable" });
-
-    if (!application.job.isDeleted && application.job.deadline && new Date(application.job.deadline) < new Date()) {
-      // Existing shortlisted candidates can still be interviewed after the job closes.
-    }
 
     if (!["shortlisted", "selected"].includes(application.status)) {
       return res.status(400).json({ success: false, message: "Student must be shortlisted or selected before scheduling an interview" });
@@ -239,7 +236,6 @@ exports.cancelInterview = async (req, res) => {
 
     interview.status = "cancelled";
     interview.studentResponseMessage = "The company cancelled this interview.";
-    interview.studentRespondedAt = new Date();
     await interview.save();
 
     if (interview.application && ["interview", "shortlisted"].includes(interview.application.status)) {
@@ -253,7 +249,7 @@ exports.cancelInterview = async (req, res) => {
         to: interview.student.email,
         subject: `Interview Cancelled - ${interview.application?.job?.title || "Placement Interview"}`,
         text: `The company has cancelled your scheduled interview for ${interview.application?.job?.title || "the position"}. Please check your Placement Portal for further updates.`,
-        html: `<h2>Interview Cancelled</h2><p>Hello ${interview.student.name},</p><p>The company has cancelled your scheduled interview for <strong>${interview.application?.job?.title || "the position"}</strong>.</p><p>Please check your Placement Portal for further updates.</p>`
+        html: `<h2>Interview Cancelled</h2><p>Hello ${escapeHtml(interview.student.name)},</p><p>The company has cancelled your scheduled interview for <strong>${escapeHtml(interview.application?.job?.title || "the position")}</strong>.</p><p>Please check your Placement Portal for further updates.</p>`
       });
     } catch (emailError) {
       console.error("Interview cancellation email failed:", emailError.message);
@@ -314,7 +310,7 @@ exports.respondToInterview = async (req, res) => {
         to: interview.company.email,
         subject: `Interview ${response === "accepted" ? "Accepted" : "Declined"} - ${interview.application?.job?.title || "Placement Interview"}`,
         text: interview.studentResponseMessage,
-        html: `<h2>Interview ${response === "accepted" ? "Accepted" : "Declined"}</h2><p>${interview.studentResponseMessage}</p>`
+        html: `<h2>Interview ${response === "accepted" ? "Accepted" : "Declined"}</h2><p>${escapeHtml(interview.studentResponseMessage || "")}</p>`
       });
     } catch (emailError) {
       console.error("Interview response email failed:", emailError.message);
@@ -338,7 +334,8 @@ exports.getMyInterviews = async (req, res) => {
       .populate("student", "name email")
       .populate("company", "name email")
       .populate({ path: "application", populate: { path: "job", select: "title location description salary deadline" } })
-      .sort({ scheduledAt: 1 });
+      .sort({ scheduledAt: 1 })
+      .lean();
     return res.json({ success: true, interviews });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Unable to load interviews" });

@@ -4,16 +4,25 @@ import toast from "react-hot-toast";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import getErrorMessage from "../utils/getErrorMessage";
+import usePageTitle from "../hooks/usePageTitle";
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  usePageTitle("Sign In");
 
   const [form, setForm] = useState({
     email: "",
     password: ""
   });
   const [loading, setLoading] = useState(false);
+
+  // Redirect already-authenticated users away from the login page.
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === "student" ? "/student" : user.role === "company" ? "/company" : "/admin", { replace: true });
+    }
+  }, [user, navigate]);
 
   // Render services can sleep when idle. Warm the API while the user is
   // entering credentials so the login request is less likely to pay the
@@ -84,10 +93,12 @@ const Login = () => {
           Sign in to continue.
         </p>
 
+        <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
         <input
+          id="login-email"
           type="email"
           required
-          placeholder="Email"
+          placeholder="you@example.com"
           value={form.email}
           onChange={(e) =>
             setForm({
@@ -98,10 +109,12 @@ const Login = () => {
           className="w-full border rounded-lg px-3 py-2.5 mb-4"
         />
 
+        <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">Password</label>
         <input
+          id="login-password"
           type="password"
           required
-          placeholder="Password"
+          placeholder="Enter your password"
           value={form.password}
           onChange={(e) =>
             setForm({
@@ -113,6 +126,7 @@ const Login = () => {
         />
 
         <button
+          type="submit"
           disabled={loading}
           className="theme-glow-button w-full disabled:bg-slate-500 text-white py-3 rounded-lg"
         >

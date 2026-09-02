@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import Loader from "../../components/Loader";
+import ErrorState from "../../components/ErrorState";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Stat = ({ label, value }) => (
@@ -50,7 +51,7 @@ const Dashboard = () => {
   }, [load]);
 
   if (loading) return <Loader text="Loading dashboard..." />;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
     <section className="space-y-6">

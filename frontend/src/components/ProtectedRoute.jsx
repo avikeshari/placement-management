@@ -1,8 +1,13 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import Loader from "./Loader";
 
 const ProtectedRoute = ({ roles }) => {
-  const { user } = useAuth();
+  const { user, checkingAuth } = useAuth();
+
+  if (checkingAuth) {
+    return <Loader text="Verifying your session..." />;
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;

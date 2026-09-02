@@ -24,12 +24,26 @@ const users = [
 const demoResumeUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
 async function upsertDemoUser(demo) {
+  // Only seed the demo user's password if the account does not yet exist.
+  // If the account already exists, do NOT overwrite its password — a real
+  // user who registered with the same email must keep their credentials.
+  const existing = await User.findOne({ email: demo.email }).select("_id role");
+  if (existing) {
+    return User.findOneAndUpdate(
+      { email: demo.email },
+      { $setOnInsert: { role: demo.role, isActive: true } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+
   const password = await bcrypt.hash(demo.password, 12);
-  return User.findOneAndUpdate(
-    { email: demo.email },
-    { $set: { name: demo.name, email: demo.email, password, role: demo.role, isActive: true } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
+  return User.create({
+    name: demo.name,
+    email: demo.email,
+    password,
+    role: demo.role,
+    isActive: true
+  });
 }
 
 function futureDate(days, hour = 23, minute = 59) {

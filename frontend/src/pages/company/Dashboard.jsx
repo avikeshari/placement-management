@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import Loader from "../../components/Loader";
+import ErrorState from "../../components/ErrorState";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Stat = ({ label, value }) => <div className="bg-white border rounded-2xl p-5"><p className="text-sm text-slate-500">{label}</p><p className="text-3xl font-bold mt-2">{value}</p></div>;
@@ -29,7 +30,7 @@ const Dashboard = () => {
 
   useEffect(() => { load(); }, [load]);
   if (loading) return <Loader text="Loading dashboard..." />;
-  if (error) return <p className="text-red-600">{error}</p>;
+  if (error) return <ErrorState message={error} onRetry={load} />;
 
   const applicants = jobs.reduce((sum, job) => sum + (job.applicantCount || 0), 0);
   const selected = jobs.reduce((sum, job) => sum + (job.selectedCount || 0), 0);

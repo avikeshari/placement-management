@@ -2,6 +2,7 @@ import { Menu, X, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -30,6 +31,8 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-5">
           <span className="text-slate-300">{user?.name}</span>
 
+          <NotificationBell />
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"
@@ -39,13 +42,15 @@ const Navbar = () => {
           </button>
         </div>
 
-        <button
-          className="md:hidden"
-          onClick={() => setOpen(!open)}
-          aria-label="Toggle navigation"
-        >
-          {open ? <X /> : <Menu />}
-        </button>
+        <div className="flex md:hidden items-center gap-3">
+          <NotificationBell />
+          <button
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle navigation"
+          >
+            {open ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
 
       {open && (

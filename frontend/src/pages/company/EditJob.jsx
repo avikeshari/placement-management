@@ -104,7 +104,7 @@ const EditJob = () => {
           </label>
         ))}
         <label className="block text-sm font-medium">Description *<textarea rows="7" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-2 w-full border rounded-lg px-3 py-2.5" /></label>
-        <div className="flex gap-3"><button disabled={saving} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{saving ? "Saving..." : "Save Changes"}</button><button type="button" onClick={() => navigate("/company/jobs")} className="border px-5 py-2.5 rounded-lg">Cancel</button></div>
+        <div className="flex gap-3"><button type="submit" disabled={saving} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{saving ? "Saving..." : "Save Changes"}</button><button type="button" onClick={() => navigate("/company/jobs")} className="border px-5 py-2.5 rounded-lg">Cancel</button></div>
       </form>
     </section>
   );

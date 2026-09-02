@@ -77,13 +77,14 @@ export default function PostJob() {
         minimumGraduationYear: minYear,
         maximumGraduationYear: maxYear,
         requiredSkills: skills,
+        type: formData.type === "internship" ? "internship" : "job",
         ...(formData.deadline ? { deadline: formData.deadline } : {})
       });
       toast.success("Job published successfully");
       setFormData(initialForm);
       navigate("/company/jobs");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Unable to publish job");
+      toast.error(getErrorMessage(error, "Unable to publish job"));
     } finally {
       setLoading(false);
     }
@@ -115,7 +116,7 @@ export default function PostJob() {
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={() => navigate("/company/jobs")} disabled={loading} className="border px-5 py-2.5 rounded-lg">Cancel</button>
-          <button disabled={loading} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{loading ? "Publishing..." : "Publish Job"}</button>
+          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{loading ? "Publishing..." : "Publish Job"}</button>
         </div>
       </form>
     </section>

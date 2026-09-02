@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   Navigate,
   Route,
@@ -9,57 +10,57 @@ import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardLayout from "./layouts/DashboardLayout";
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Unauthorized from "./pages/Unauthorized";
-import NotFound from "./pages/NotFound";
-import InterviewRoom from "./pages/InterviewRoom";
-import Messages from "./pages/Messages";
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Unauthorized = lazy(() => import("./pages/Unauthorized"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const InterviewRoom = lazy(() => import("./pages/InterviewRoom"));
+const Messages = lazy(() => import("./pages/Messages"));
 
-import StudentDashboard from "./pages/student/Dashboard";
-import StudentProfile from "./pages/student/Profile";
-import StudentAcademicRecord from "./pages/student/AcademicRecord";
-import StudentFollowing from "./pages/student/Following";
-import StudentJobs from "./pages/student/Jobs";
-import StudentApplications from "./pages/student/Applications";
-import StudentInterviews from "./pages/student/Interviews";
-import StudentDrives from "./pages/student/Drives";
-import SavedJobs from "./pages/student/SavedJobs";
-import SavedSearches from "./pages/student/SavedSearches";
-import StudentEvents from "./pages/student/Events";
-import StudentNotifications from "./pages/student/Notifications";
-import StudentResources from "./pages/student/CareerResources";
-import StudentSettings from "./pages/student/PrivacySettings";
-import ResumePreparation from "./pages/student/resources/ResumePreparation";
-import InterviewPreparation from "./pages/student/resources/InterviewPreparation";
-import PlacementChecklist from "./pages/student/resources/PlacementChecklist";
-import ProfessionalCommunication from "./pages/student/resources/ProfessionalCommunication";
+const StudentDashboard = lazy(() => import("./pages/student/Dashboard"));
+const StudentProfile = lazy(() => import("./pages/student/Profile"));
+const StudentAcademicRecord = lazy(() => import("./pages/student/AcademicRecord"));
+const StudentFollowing = lazy(() => import("./pages/student/Following"));
+const StudentJobs = lazy(() => import("./pages/student/Jobs"));
+const StudentApplications = lazy(() => import("./pages/student/Applications"));
+const StudentInterviews = lazy(() => import("./pages/student/Interviews"));
+const StudentDrives = lazy(() => import("./pages/student/Drives"));
+const SavedJobs = lazy(() => import("./pages/student/SavedJobs"));
+const SavedSearches = lazy(() => import("./pages/student/SavedSearches"));
+const StudentEvents = lazy(() => import("./pages/student/Events"));
+const StudentNotifications = lazy(() => import("./pages/student/Notifications"));
+const StudentResources = lazy(() => import("./pages/student/CareerResources"));
+const StudentSettings = lazy(() => import("./pages/student/PrivacySettings"));
+const ResumePreparation = lazy(() => import("./pages/student/resources/ResumePreparation"));
+const InterviewPreparation = lazy(() => import("./pages/student/resources/InterviewPreparation"));
+const PlacementChecklist = lazy(() => import("./pages/student/resources/PlacementChecklist"));
+const ProfessionalCommunication = lazy(() => import("./pages/student/resources/ProfessionalCommunication"));
 
-import CompanyDashboard from "./pages/company/Dashboard";
-import CompanyProfile from "./pages/company/CompanyProfile";
-import CompanyJobs from "./pages/company/Jobs";
-import PostJob from "./pages/company/PostJob";
-import EditJob from "./pages/company/EditJob";
-import Applicants from "./pages/company/Applicants";
-import CompanyInterviews from "./pages/company/Interviews";
-import TalentSearch from "./pages/company/TalentSearch";
-import CompanySavedCandidates from "./pages/company/SavedCandidates";
-import CompanyNotifications from "./pages/company/Notifications";
+const CompanyDashboard = lazy(() => import("./pages/company/Dashboard"));
+const CompanyProfile = lazy(() => import("./pages/company/CompanyProfile"));
+const CompanyJobs = lazy(() => import("./pages/company/Jobs"));
+const PostJob = lazy(() => import("./pages/company/PostJob"));
+const EditJob = lazy(() => import("./pages/company/EditJob"));
+const Applicants = lazy(() => import("./pages/company/Applicants"));
+const CompanyInterviews = lazy(() => import("./pages/company/Interviews"));
+const TalentSearch = lazy(() => import("./pages/company/TalentSearch"));
+const CompanySavedCandidates = lazy(() => import("./pages/company/SavedCandidates"));
+const CompanyNotifications = lazy(() => import("./pages/company/Notifications"));
 
-import AdminDashboard from "./pages/admin/Dashboard";
-import AcademicImport from "./pages/admin/AcademicImport";
-import AdminStudents from "./pages/admin/Students";
-import AdminCompanies from "./pages/admin/Companies";
-import AdminJobs from "./pages/admin/Jobs";
-import AdminApplications from "./pages/admin/Applications";
-import AdminInterviews from "./pages/admin/Interviews";
-import AdminAnalytics from "./pages/admin/Analytics";
-import AdminReports from "./pages/admin/Reports";
-import AdminProfile from "./pages/admin/Profile";
-import AdminDrives from "./pages/admin/Drives";
-import AdminVerification from "./pages/admin/Verification";
-import AdminAuditLogs from "./pages/admin/AuditLogs";
-import AdminEvents from "./pages/admin/Events";
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const AcademicImport = lazy(() => import("./pages/admin/AcademicImport"));
+const AdminStudents = lazy(() => import("./pages/admin/Students"));
+const AdminCompanies = lazy(() => import("./pages/admin/Companies"));
+const AdminJobs = lazy(() => import("./pages/admin/Jobs"));
+const AdminApplications = lazy(() => import("./pages/admin/Applications"));
+const AdminInterviews = lazy(() => import("./pages/admin/Interviews"));
+const AdminAnalytics = lazy(() => import("./pages/admin/Analytics"));
+const AdminReports = lazy(() => import("./pages/admin/Reports"));
+const AdminProfile = lazy(() => import("./pages/admin/Profile"));
+const AdminDrives = lazy(() => import("./pages/admin/Drives"));
+const AdminVerification = lazy(() => import("./pages/admin/Verification"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
+const AdminEvents = lazy(() => import("./pages/admin/Events"));
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -84,7 +85,14 @@ const HomeRedirect = () => {
 
 const App = () => {
   return (
-    <Routes>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+          Loading…
+        </div>
+      }
+    >
+      <Routes>
       <Route path="/" element={<HomeRedirect />} />
 
       <Route path="/login" element={<Login />} />
@@ -240,7 +248,8 @@ const App = () => {
         path="*"
         element={<NotFound />}
       />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 };
 

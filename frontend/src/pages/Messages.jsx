@@ -19,6 +19,7 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
+  const [mobileView, setMobileView] = useState("list");
   const messagesEndRef = useRef(null);
 
   const selectedConversation = useMemo(
@@ -140,7 +141,7 @@ const Messages = () => {
           data-testid="messages-connections"
           className="grid lg:grid-cols-[320px_1fr] gap-5 bg-white border rounded-2xl overflow-hidden min-h-[620px]"
         >
-          <aside className="border-r bg-slate-50">
+          <aside className={`border-r bg-slate-50 ${mobileView === "chat" ? "hidden lg:block" : "block"}`}>
             <div className="p-4 border-b bg-white">
               <h2 className="font-semibold">Connections</h2>
               <p className="text-xs text-slate-500 mt-1">Interview-related conversations</p>
@@ -154,7 +155,7 @@ const Messages = () => {
                     key={conversation._id}
                     type="button"
                     data-testid="conversation-item"
-                    onClick={() => setSelectedId(conversation._id)}
+                    onClick={() => { setSelectedId(conversation._id); setMobileView("chat"); }}
                     className={`w-full text-left p-4 transition ${active ? "bg-blue-50" : "hover:bg-white"}`}
                   >
                     <p className="font-semibold text-slate-800 truncate">{other?.name || "Connection"}</p>
@@ -168,16 +169,26 @@ const Messages = () => {
             </div>
           </aside>
 
-          <div className="flex flex-col min-w-0">
+          <div className={`flex flex-col min-w-0 ${mobileView === "list" ? "hidden lg:flex" : "flex"}`}>
             {selectedConversation ? (
               <>
-                <header className="p-4 border-b">
-                  <h2 className="font-bold text-lg">
-                    {user?.role === "student" ? selectedConversation.company?.name : selectedConversation.student?.name}
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {selectedConversation.job?.title || "Placement Interview"}
-                  </p>
+                <header className="p-4 border-b flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView("list")}
+                    className="lg:hidden text-blue-600 text-sm font-semibold"
+                    aria-label="Back to connections"
+                  >
+                    ← Back
+                  </button>
+                  <div>
+                    <h2 className="font-bold text-lg">
+                      {user?.role === "student" ? selectedConversation.company?.name : selectedConversation.student?.name}
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                      {selectedConversation.job?.title || "Placement Interview"}
+                    </p>
+                  </div>
                 </header>
 
                 <div className="flex-1 p-4 md:p-6 overflow-y-auto bg-slate-50 min-h-[450px] max-h-[560px]">
@@ -186,7 +197,7 @@ const Messages = () => {
                   ) : (
                     <div className="space-y-3">
                       {messages.map((message) => {
-                        const mine = String(message.sender?._id || message.sender) === String(user?._id);
+                        const mine = String(message.sender?._id || message.sender) === String(user?.id || user?._id);
                         return (
                           <div key={message._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                             <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${mine ? "bg-blue-600 text-white" : "bg-white border text-slate-700"}`}>
@@ -211,6 +222,7 @@ const Messages = () => {
                       maxLength={2000}
                       rows={2}
                       placeholder="Write a message..."
+                      aria-label="Write a message"
                       className="flex-1 border rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <button

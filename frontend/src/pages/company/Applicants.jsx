@@ -13,6 +13,7 @@ const Applicants = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [schedule, setSchedule] = useState(null);
+  const [scheduling, setScheduling] = useState(false);
   const [studentProfile, setStudentProfile] = useState(null);
   const [resumeLoading, setResumeLoading] = useState(null);
   const [error, setError] = useState("");
@@ -121,6 +122,7 @@ const Applicants = () => {
 
   const submitInterview = async (event) => {
     event.preventDefault();
+    if (scheduling) return;
 
     if (!schedule?.scheduledDate || !schedule?.scheduledTime) {
       toast.error(
@@ -168,6 +170,7 @@ const Applicants = () => {
     }
 
     try {
+      setScheduling(true);
       await api.post("/interviews", {
         applicationId: schedule.applicationId,
         scheduledAt: scheduledAt.toISOString(),
@@ -195,6 +198,8 @@ const Applicants = () => {
           "Unable to schedule interview."
         )
       );
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -558,9 +563,10 @@ const Applicants = () => {
 
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+                disabled={scheduling}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:bg-slate-400"
               >
-                Schedule Interview
+                {scheduling ? "Scheduling..." : "Schedule Interview"}
               </button>
             </div>
           </form>

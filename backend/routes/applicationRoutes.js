@@ -38,8 +38,7 @@ router.delete(
   "/:id/withdraw",
   protect,
   authorize("student"),
-  withdrawApplication,
-  respondToOffer
+  withdrawApplication
 );
 
 router.patch(

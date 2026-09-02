@@ -20,7 +20,7 @@ const router = express.Router();
 router.get(
   "/me",
   protect,
-  authorize("student", "company"),
+  authorize("student", "company", "admin"),
   getMyProfile
 );
 

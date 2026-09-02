@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import ErrorState from "../../components/ErrorState";
+import getErrorMessage from "../../utils/getErrorMessage";
 
 export default function AcademicRecord() {
   const [record, setRecord] = useState(null);
@@ -11,7 +12,7 @@ export default function AcademicRecord() {
   useEffect(() => {
     api.get("/academic/me")
       .then(({ data }) => setRecord(data.record || null))
-      .catch((err) => setError(err.response?.data?.message || "Unable to load academic record."))
+      .catch((err) => setError(getErrorMessage(err, "Unable to load academic record.")))
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,2 +1,0 @@
-import {useEffect,useState} from "react";import api from "../../api/axios";
-export default function Resources(){const [r,setR]=useState([]);useEffect(()=>{api.get('/benchmark/career-resources').then(x=>setR(x.data.resources||[]))},[]);return <section><h1 className="text-3xl font-bold mb-6">Career Resources</h1><div className="grid md:grid-cols-2 gap-5">{r.map(x=><div className="bg-white border rounded-2xl p-6" key={x.title}><h2 className="font-semibold text-lg">{x.title}</h2><p className="text-slate-500 mt-2">{x.description}</p></div>)}</div></section>}

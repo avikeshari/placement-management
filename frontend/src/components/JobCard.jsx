@@ -53,9 +53,11 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
           <button
             disabled={applying || applied || !eligible}
             onClick={() => onApply(job._id)}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg transition"
+            title={!eligible ? (eligibilityReasons.length ? eligibilityReasons.join("; ") : "You are not eligible for this job") : undefined}
+            aria-disabled={applying || applied || !eligible}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500 text-white px-5 py-2.5 rounded-lg transition"
           >
-            {applied ? "Already Applied" : applying ? "Applying..." : "Apply Now"}
+            {applied ? "Already Applied" : applying ? "Applying..." : !eligible ? "Not Eligible" : "Apply Now"}
           </button>
         </div>
       </article>
@@ -96,9 +98,9 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
                 type="button"
                 disabled={applying || applied || !eligible}
                 onClick={() => { setShowDetails(false); onApply(job._id); }}
-                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400"
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-500"
               >
-                {applied ? "Already Applied" : applying ? "Applying..." : "Apply Now"}
+                {applied ? "Already Applied" : applying ? "Applying..." : !eligible ? "Not Eligible" : "Apply Now"}
               </button>
             </div>
           </div>

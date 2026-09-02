@@ -1,4 +1,5 @@
 import axios from "axios";
+import toast from "react-hot-toast";
 
 const configuredBaseUrl = (import.meta.env.VITE_API_URL || "/api").trim();
 const baseURL = configuredBaseUrl.replace(/\/$/, "") || "/api";
@@ -12,6 +13,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // Let the browser/Axios set the multipart boundary for FormData.
+  // A global JSON Content-Type prevents multer from receiving req.file.
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
+
   const token = localStorage.getItem("token");
 
   if (token) {
@@ -29,6 +36,7 @@ api.interceptors.response.use(
       localStorage.removeItem("user");
 
       if (window.location.pathname !== "/login") {
+        toast.error("Your session has expired. Please sign in again.");
         window.location.href = "/login";
       }
     }

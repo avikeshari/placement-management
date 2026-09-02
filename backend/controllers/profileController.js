@@ -6,12 +6,22 @@ const Job = require("../models/Job");
 const cloudinary = require("../config/cloudinary");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const AcademicRecord = require("../models/AcademicRecord");
+const Conversation = require("../models/Conversation");
+const Message = require("../models/Message");
+const sanitizeError = require("../utils/sanitizeError");
+
+const encodeFilename = (name) => {
+  const safe = String(name || "resume").replace(/[\r\n"]/g, "");
+  return `filename="${safe}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
+};
 
 exports.getStudentProfileForCompany = async (req, res) => {
   try {
     if (req.user.role === "company") {
+      const companyJobs = await Job.find({ company: req.user._id, isDeleted: false }).select("_id");
       const relationship = await Application.findOne({
-        student: req.params.userId
+        student: req.params.userId,
+        job: { $in: companyJobs.map((job) => job._id) }
       }).populate({
         path: "job",
         match: { company: req.user._id },
@@ -35,11 +45,33 @@ exports.getStudentProfileForCompany = async (req, res) => {
       });
     }
 
+    if (req.user.role === "company") {
+      // Honor the student's privacy and GPA-sharing preferences. A company
+      // may only see what the student opted to share with employers.
+      const profileObj = profile.toObject();
+      if (profile.privacy === "private") {
+        delete profileObj.phone;
+        delete profileObj.location;
+        delete profileObj.industry;
+        delete profileObj.description;
+        delete profileObj.website;
+        profileObj.user = { name: profile.user?.name, email: profile.user?.email, role: profile.user?.role };
+      }
+      if (!profile.shareGpaWithEmployers) {
+        delete profileObj.cgpa;
+        delete profileObj.graduationYear;
+        delete profileObj.college;
+        delete profileObj.course;
+        delete profileObj.branch;
+      }
+      return res.json({ success: true, profile: profileObj });
+    }
+
     return res.json({ success: true, profile });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: sanitizeError(error)
     });
   }
 };
@@ -57,7 +89,7 @@ exports.getMyProfile = async (req, res) => {
      * Self-heal older/demo accounts that were
      * created before Profile creation existed.
      */
-    if (!profile) {
+    if (!profile && req.user.role === "student") {
       await Profile.findOneAndUpdate(
         { user: req.user._id },
         {
@@ -80,6 +112,13 @@ exports.getMyProfile = async (req, res) => {
       );
     }
 
+    if (!profile) {
+      return res.json({
+        success: true,
+        profile: null
+      });
+    }
+
     return res.json({
       success: true,
       profile
@@ -92,9 +131,7 @@ exports.getMyProfile = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Unable to load profile"
+      message: sanitizeError(error, "Unable to load profile")
     });
   }
 };
@@ -160,6 +197,8 @@ exports.updateProfile = async (req, res) => {
         return res.status(400).json({ success: false, message: "Enter a valid graduation year" });
       }
       updateData.graduationYear = parsedGraduationYear;
+    } else if (graduationYear === "" ) {
+      updateData.graduationYear = null;
     }
 
     if (cgpa !== undefined && cgpa !== null && cgpa !== "") {
@@ -168,6 +207,8 @@ exports.updateProfile = async (req, res) => {
         return res.status(400).json({ success: false, message: "Enter a valid CGPA between 0 and 10" });
       }
       updateData.cgpa = parsedCgpa;
+    } else if (cgpa === "") {
+      updateData.cgpa = null;
     }
 
     const profile =
@@ -337,9 +378,7 @@ exports.uploadResume = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Unable to upload resume"
+      message: sanitizeError(error, "Unable to upload resume")
     });
   }
 };
@@ -407,7 +446,7 @@ exports.downloadResume = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `${disposition}; filename="${fileName.replace(/"/g, "")}"`
+      `${disposition}; ${encodeFilename(fileName)}`
     );
 
     res.setHeader(
@@ -442,12 +481,16 @@ exports.downloadStudentResume = async (req, res) => {
     const studentId = req.params.userId;
 
     if (req.user.role === "company") {
+      const applicationId = req.query.applicationId;
+      if (!applicationId) {
+        return res.status(400).json({ success: false, message: "An application reference is required to download this resume" });
+      }
       const application = await Application.findOne({
-        student: studentId,
-        ...(req.query.applicationId ? { _id: req.query.applicationId } : {})
+        _id: applicationId,
+        student: studentId
       }).populate("job", "company");
 
-      if (!application || application.job.company.toString() !== req.user._id.toString()) {
+      if (!application || !application.job || application.job.company.toString() !== req.user._id.toString()) {
         return res.status(403).json({ success: false, message: "You are not authorized to view this student's resume" });
       }
     }
@@ -473,7 +516,7 @@ exports.downloadStudentResume = async (req, res) => {
     };
 
     res.setHeader("Content-Type", contentTypes[extension] || response.headers["content-type"] || "application/octet-stream");
-    res.setHeader("Content-Disposition", `inline; filename="${fileName.replace(/"/g, "")}"`);
+    res.setHeader("Content-Disposition", `inline; ${encodeFilename(fileName)}`);
     res.setHeader("Cache-Control", "private, no-store");
     return res.send(Buffer.from(response.data));
   } catch (error) {
@@ -560,9 +603,7 @@ exports.deleteResume = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Unable to delete resume"
+      message: sanitizeError(error, "Unable to delete resume")
     });
   }
 };
@@ -596,6 +637,11 @@ exports.deleteMyAccount = async (
           }
         ]
       });
+
+      const conversations = await Conversation.find({ student: userId }).select("_id");
+      const conversationIds = conversations.map((conversation) => conversation._id);
+      if (conversationIds.length) await Message.deleteMany({ conversation: { $in: conversationIds } });
+      await Conversation.deleteMany({ student: userId });
 
       await Application.deleteMany({
         student: userId
@@ -661,6 +707,11 @@ exports.deleteMyAccount = async (
           $in: applicationIds
         }
       });
+
+      const conversations = await Conversation.find({ company: userId }).select("_id");
+      const conversationIds = conversations.map((conversation) => conversation._id);
+      if (conversationIds.length) await Message.deleteMany({ conversation: { $in: conversationIds } });
+      await Conversation.deleteMany({ company: userId });
 
       await Application.deleteMany({
         job: {

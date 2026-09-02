@@ -4,17 +4,43 @@ import {
   useEffect,
   useState
 } from "react";
+import api from "../api/axios";
 
 const AuthContext = createContext(null);
+
+const decodeToken = (token) => {
+  try {
+    const base64 = token.split(".")[1];
+    if (!base64) return null;
+    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(window.atob(normalized))));
+  } catch {
+    return null;
+  }
+};
+
+const isTokenExpired = (token) => {
+  const decoded = decodeToken(token);
+  if (!decoded?.exp) return false;
+  return decoded.exp * 1000 <= Date.now();
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
+      const token = localStorage.getItem("token");
+      if (token && isTokenExpired(token)) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        return null;
+      }
       return JSON.parse(localStorage.getItem("user")) || null;
     } catch {
       return null;
     }
   });
+
+  const [checkingAuth, setCheckingAuth] = useState(false);
 
   const login = (data) => {
     localStorage.setItem("token", data.token);
@@ -29,14 +55,37 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (token && isTokenExpired(token)) {
+      logout();
+      return;
+    }
+
     const storedUser = localStorage.getItem("user");
 
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        logout();
-      }
+    if (storedUser && token) {
+      // Validate the stored user against the server so stale/tampered data
+      // cannot present a false authenticated state.
+      setCheckingAuth(true);
+      api
+        .get("/profile/me")
+        .then((response) => {
+          const profile = response.data.profile;
+          const profileUser = profile?.user;
+          const freshUser = {
+            id: profileUser?.id || profileUser?._id,
+            name: profileUser?.name,
+            email: profileUser?.email,
+            role: profileUser?.role
+          };
+          setUser(freshUser);
+          localStorage.setItem("user", JSON.stringify(freshUser));
+        })
+        .catch(() => {
+          logout();
+        })
+        .finally(() => setCheckingAuth(false));
     }
   }, []);
 
@@ -46,7 +95,8 @@ export const AuthProvider = ({ children }) => {
         user,
         login,
         logout,
-        isAuthenticated: Boolean(user)
+        isAuthenticated: Boolean(user),
+        checkingAuth
       }}
     >
       {children}

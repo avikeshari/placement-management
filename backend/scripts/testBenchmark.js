@@ -39,7 +39,7 @@ check("Student saved jobs use canonical API route", readFront("src/pages/student
 check("Student saved searches use canonical API route", readFront("src/pages/student/SavedSearches.jsx").includes("api.get('/saved-searches')"));
 check("Student events use canonical API route", readFront("src/pages/student/Events.jsx").includes('api.get("/career-events")'));
 check("Student notifications use canonical API route", readFront("src/pages/student/Notifications.jsx").includes('api.get("/notifications")'));
-check("Company talent uses canonical API route", readFront("src/pages/company/TalentSearch.jsx").includes("api.get('/candidate-search'"));
+check("Company talent uses canonical API route", /api\.get\(["']\/candidate-search["']/.test(readFront("src/pages/company/TalentSearch.jsx")));
 check("Company saved candidates use canonical API route", readFront("src/pages/company/SavedCandidates.jsx").includes("api.get('/saved-candidates')"));
 check("Company notifications use canonical API route", readFront("src/pages/company/Notifications.jsx").includes("api.get('/notifications')"));
 check("Admin verification uses admin API route", readFront("src/pages/admin/Verification.jsx").includes("/admin/companies/"));
