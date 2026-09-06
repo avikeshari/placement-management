@@ -3,9 +3,9 @@ import { useAuth } from "../context/AuthContext";
 import Loader from "./Loader";
 
 const ProtectedRoute = ({ roles }) => {
-  const { user, checkingAuth } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (checkingAuth) {
+  if (loading) {
     return <Loader text="Verifying your session..." />;
   }
 

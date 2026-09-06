@@ -5,6 +5,7 @@ import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Applicants = () => {
@@ -13,7 +14,7 @@ const Applicants = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [schedule, setSchedule] = useState(null);
-  const [scheduling, setScheduling] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [resumeLoading, setResumeLoading] = useState(null);
   const [error, setError] = useState("");
@@ -67,7 +68,17 @@ const Applicants = () => {
       );
     } finally {
       setUpdating(null);
+      setConfirmDialog(null);
     }
+  };
+
+  const confirmUpdate = (application, status) => {
+    const label = status === "rejected"
+      ? `Reject ${application.student?.name || "this applicant"} for this position?`
+      : status === "selected"
+        ? `Select ${application.student?.name || "this applicant"}? This issues a placement offer and may affect the student's eligibility for other offers.`
+        : `Shortlist ${application.student?.name || "this applicant"}?`;
+    setConfirmDialog({ application, status, label });
   };
 
   const viewStudent = async (userId) => {
@@ -122,7 +133,6 @@ const Applicants = () => {
 
   const submitInterview = async (event) => {
     event.preventDefault();
-    if (scheduling) return;
 
     if (!schedule?.scheduledDate || !schedule?.scheduledTime) {
       toast.error(
@@ -170,7 +180,6 @@ const Applicants = () => {
     }
 
     try {
-      setScheduling(true);
       await api.post("/interviews", {
         applicationId: schedule.applicationId,
         scheduledAt: scheduledAt.toISOString(),
@@ -198,8 +207,6 @@ const Applicants = () => {
           "Unable to schedule interview."
         )
       );
-    } finally {
-      setScheduling(false);
     }
   };
 
@@ -291,8 +298,8 @@ const Applicants = () => {
                         updating === application._id
                       }
                       onClick={() =>
-                        updateStatus(
-                          application._id,
+                        confirmUpdate(
+                          application,
                           "shortlisted"
                         )
                       }
@@ -306,8 +313,8 @@ const Applicants = () => {
                         updating === application._id
                       }
                       onClick={() =>
-                        updateStatus(
-                          application._id,
+                        confirmUpdate(
+                          application,
                           "rejected"
                         )
                       }
@@ -335,8 +342,8 @@ const Applicants = () => {
                     {application.status === "shortlisted" && (
                       <button
                         onClick={() =>
-                          updateStatus(
-                            application._id,
+                          confirmUpdate(
+                            application,
                             "selected"
                           )
                         }
@@ -352,6 +359,17 @@ const Applicants = () => {
           </article>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.status === "rejected" ? "Reject Applicant" : confirmDialog?.status === "selected" ? "Select Applicant" : "Shortlist Applicant"}
+        message={confirmDialog?.label}
+        confirmLabel={confirmDialog?.status === "rejected" ? "Reject" : confirmDialog?.status === "selected" ? "Select" : "Shortlist"}
+        danger={confirmDialog?.status === "rejected"}
+        loading={updating !== null}
+        onConfirm={() => confirmDialog && updateStatus(confirmDialog.application._id, confirmDialog.status)}
+        onCancel={() => setConfirmDialog(null)}
+      />
 
       {studentProfile && (
         <div
@@ -563,10 +581,9 @@ const Applicants = () => {
 
               <button
                 type="submit"
-                disabled={scheduling}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:bg-slate-400"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
               >
-                {scheduling ? "Scheduling..." : "Schedule Interview"}
+                Schedule Interview
               </button>
             </div>
           </form>

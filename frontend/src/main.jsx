@@ -15,15 +15,7 @@ createRoot(document.getElementById("root")).render(
       <AppErrorBoundary>
         <App />
       </AppErrorBoundary>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              maxWidth: "480px"
-            }
-          }}
-        />
+        <Toaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>

@@ -4,6 +4,7 @@ import api from "../../api/axios";
 import Loader from "../../components/Loader";
 import ErrorState from "../../components/ErrorState";
 import EmptyState from "../../components/EmptyState";
+import Pagination from "../../components/Pagination";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const STATUS_OPTIONS = [
@@ -21,7 +22,9 @@ const Applications = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 30;
+
+  useEffect(() => { setPage(1); }, [query, status]);
 
   const load = useCallback(async () => {
     try {
@@ -74,11 +77,9 @@ const Applications = () => {
     });
   }, [applications, query, status]);
 
-  useEffect(() => { setPage(1); }, [filtered]);
-
-  const start = (page - 1) * pageSize;
-  const visibleRows = filtered.slice(start, start + pageSize);
-  const totalPages = Math.ceil(filtered.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (loading) {
     return <Loader text="Loading applications..." />;
@@ -115,6 +116,7 @@ const Applications = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search student, job or company"
+              aria-label="Search applications"
               className="w-full border rounded-lg pl-10 pr-3 py-2.5 bg-white"
             />
           </div>
@@ -122,6 +124,7 @@ const Applications = () => {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
+            aria-label="Filter applications by status"
             className="border rounded-lg px-3 py-2.5 bg-white"
           >
             <option value="all">All status</option>
@@ -165,7 +168,7 @@ const Applications = () => {
             </thead>
 
             <tbody>
-              {visibleRows.map((item) => (
+              {visible.map((item) => (
                 <tr
                   key={item._id}
                   className="border-t"
@@ -202,13 +205,7 @@ const Applications = () => {
               ))}
             </tbody>
           </table>
-          {filtered.length > pageSize && (
-            <div className="flex items-center justify-between px-5 py-4 border-t">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg disabled:opacity-50">Previous</button>
-              <span className="text-slate-600">Page {page} of {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg disabled:opacity-50">Next</button>
-            </div>
-          )}
+          <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
     </section>

@@ -57,6 +57,30 @@ const AcademicImport = () => {
           Import Student Data From CSV File
         </p>
 
+        <div className="bg-slate-50 border rounded-xl p-4 mt-4 text-sm text-slate-600">
+          <p className="font-medium text-slate-700 mb-1">
+            Expected CSV columns
+          </p>
+          <code className="text-xs">email, name, enrollmentNumber, college, branch, semester, cgpa, backlogs</code>
+          <p className="mt-2 text-xs">Each row must contain a valid student email and a GPA between 0 and 10. Imported records overwrite the student's official academic data.</p>
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              const csv = ["email,name,enrollmentNumber,college,branch,semester,cgpa,backlogs", "student.demo@aviportal.com,Student Demo,EN2024001,Example College,CSE,7,9.2,0"].join("\n");
+              const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "academic-import-template.csv";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-blue-600 underline text-xs mt-2 inline-block"
+          >
+            Download sample CSV template
+          </a>
+        </div>
+
         <input
           id="academic-file"
           type="file"
@@ -66,6 +90,7 @@ const AcademicImport = () => {
           }
           className="mt-6"
         />
+        {file && <p className="text-xs text-slate-500 mt-2">Selected: {file.name}</p>}
 
         <button
           onClick={upload}

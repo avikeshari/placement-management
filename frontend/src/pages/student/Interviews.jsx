@@ -6,6 +6,7 @@ import Loader from "../../components/Loader";
 import EmptyState from "../../components/EmptyState";
 import ErrorState from "../../components/ErrorState";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import PromptDialog from "../../components/PromptDialog";
 import getErrorMessage from "../../utils/getErrorMessage";
 
 const Interviews = () => {
@@ -13,11 +14,8 @@ const Interviews = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [responding, setResponding] = useState(null);
-  const [declining, setDeclining] = useState(null);
-  const [accepting, setAccepting] = useState(null);
-  const [declineMessage, setDeclineMessage] = useState(
-    "I am unable to attend this interview. Thank you for the opportunity."
-  );
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [declineDialog, setDeclineDialog] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -47,31 +45,33 @@ const Interviews = () => {
     load();
   }, [load]);
 
-  const respond = async (interview, response) => {
-    let message = "";
-    if (response === "declined") {
-      message = declineMessage.trim();
-    } else {
-      message = "I accept the interview invitation and will attend at the scheduled time.";
-    }
-
+  const executeResponse = async (interview, response, message) => {
     try {
       setResponding(interview._id);
       await api.patch(`/interviews/${interview._id}/respond`, { response, message });
       toast.success(response === "accepted" ? "Interview accepted" : "Interview declined");
-      setDeclining(null);
-      setAccepting(null);
       await load();
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to update interview response."));
     } finally {
       setResponding(null);
+      setConfirmDialog(null);
+      setDeclineDialog(null);
     }
   };
 
-  const openDecline = (interview) => {
-    setDeclineMessage("I am unable to attend this interview. Thank you for the opportunity.");
-    setDeclining(interview);
+  const requestAccept = (interview) => {
+    setConfirmDialog({
+      interview,
+      response: "accepted",
+      title: "Accept Interview",
+      message: `Accept this interview for ${interview.application?.job?.title || "the position"} at ${interview.company?.name || "the company"}?`
+    });
+  };
+
+  const requestDecline = (interview) => {
+    setConfirmDialog(null);
+    setDeclineDialog(interview);
   };
 
   if (loading) {
@@ -213,7 +213,7 @@ const Interviews = () => {
                 <button
                   type="button"
                   disabled={responding === interview._id}
-                  onClick={() => setAccepting(interview)}
+                  onClick={() => requestAccept(interview)}
                   className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium disabled:opacity-60"
                 >
                   {responding === interview._id ? "Updating..." : "Accept Interview"}
@@ -221,7 +221,7 @@ const Interviews = () => {
                 <button
                   type="button"
                   disabled={responding === interview._id}
-                  onClick={() => openDecline(interview)}
+                  onClick={() => requestDecline(interview)}
                   className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium disabled:opacity-60"
                 >
                   Decline Interview
@@ -250,39 +250,29 @@ const Interviews = () => {
         ))}
       </div>
 
-      {declining && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setDeclining(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold">Decline interview</h3>
-            <p className="text-sm text-slate-500 mt-1">Add an optional message to the company.</p>
-            <textarea
-              value={declineMessage}
-              onChange={(e) => setDeclineMessage(e.target.value)}
-              rows={4}
-              className="border rounded-lg p-3 w-full mt-4"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setDeclining(null)} className="px-4 py-2 rounded-lg border">Cancel</button>
-              <button
-                onClick={() => respond(declining, "declined")}
-                disabled={responding === declining._id}
-                className="px-4 py-2 rounded-lg bg-red-600 text-white disabled:opacity-60"
-              >
-                {responding === declining._id ? "Declining..." : "Confirm Decline"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <ConfirmDialog
-        open={!!accepting}
-        title="Accept interview?"
-        message="Are you sure you want to accept this interview?"
-        confirmText="Accept"
-        loading={responding === accepting?._id}
-        onConfirm={() => accepting && respond(accepting, "accepted")}
-        onCancel={() => setAccepting(null)}
+        open={Boolean(confirmDialog)}
+        title={confirmDialog?.title || "Confirm"}
+        message={confirmDialog?.message}
+        confirmLabel="Confirm"
+        danger={false}
+        loading={responding !== null}
+        onConfirm={() => confirmDialog && executeResponse(confirmDialog.interview, confirmDialog.response, "I accept the interview invitation and will attend at the scheduled time.")}
+        onCancel={() => setConfirmDialog(null)}
+      />
+
+      <PromptDialog
+        open={Boolean(declineDialog)}
+        title="Decline Interview"
+        message="Optionally add a message for the company."
+        placeholder="Message to the company..."
+        defaultValue="I am unable to attend this interview. Thank you for the opportunity."
+        maxLength={2000}
+        textarea
+        confirmLabel="Decline Interview"
+        loading={responding !== null}
+        onConfirm={(message) => declineDialog && executeResponse(declineDialog, "declined", message)}
+        onCancel={() => setDeclineDialog(null)}
       />
     </section>
   );

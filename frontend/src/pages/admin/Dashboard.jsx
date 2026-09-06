@@ -38,16 +38,17 @@ const Dashboard = () => {
   if (loading) return <Loader text="Loading admin dashboard..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
+  const toNumber = (value) => Number(value) || 0;
   const cards = [
-    ["Students", stats.students, Users],
-    ["Companies", stats.companies, Building2],
-    ["Active Jobs", stats.openJobs, BriefcaseBusiness],
-    ["Applications", stats.applications, FileText],
-    ["Interviews", stats.interviews, CalendarDays],
-    ["Selected", stats.selected, Award],
-    ["Offers Accepted", stats.offersAccepted || 0, Award],
-    ["Placements", stats.placements, UserCheck],
-    ["Placement Rate", `${stats.placementRate}%`, TrendingUp]
+    ["Students", toNumber(stats.students), Users],
+    ["Companies", toNumber(stats.companies), Building2],
+    ["Active Jobs", toNumber(stats.openJobs), BriefcaseBusiness],
+    ["Applications", toNumber(stats.applications), FileText],
+    ["Interviews", toNumber(stats.interviews), CalendarDays],
+    ["Selected", toNumber(stats.selected), Award],
+    ["Offers Accepted", toNumber(stats.offersAccepted), Award],
+    ["Placements", toNumber(stats.placements), UserCheck],
+    ["Placement Rate", `${toNumber(stats.placementRate)}%`, TrendingUp]
   ];
 
   return (
@@ -83,7 +84,7 @@ const Dashboard = () => {
         </div>
         <div className="bg-white border rounded-2xl p-6">
           <p className="text-slate-500">Rejected Applications</p>
-          <p className="text-2xl font-bold mt-2">{stats.rejected}</p>
+          <p className="text-2xl font-bold mt-2">{toNumber(stats.rejected)}</p>
         </div>
       </div>
     </section>

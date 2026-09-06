@@ -2,92 +2,82 @@ const mongoose = require("mongoose");
 const Application = require("../models/Application");
 const Job = require("../models/Job");
 const Profile = require("../models/Profile");
-const AcademicRecord = require("../models/AcademicRecord");
 const Notification = require("../models/Notification");
 const sendEmail = require("../utils/sendEmail");
 const Interview = require("../models/Interview");
 const User = require("../models/User");
-const { buildEligibility } = require("./jobController");
-const escapeHtml = require("../utils/escapeHtml");
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 exports.applyForJob = async (req, res) => {
-  const session = await mongoose.startSession();
-
   try {
-    let createdApplication;
-    const coverLetter = String(req.body.coverLetter || "").trim();
-    if (coverLetter.length > 5000) return res.status(400).json({ success:false, message:"Cover letter must be 5000 characters or fewer" });
+    const coverLetter = String(req.body?.coverLetter ?? "").trim();
+    if (coverLetter.length > 5000) {
+      return res.status(400).json({ success: false, message: "Cover letter must be 5000 characters or fewer" });
+    }
 
-    await session.withTransaction(async () => {
-      const job = await Job.findOne({
-        _id: req.params.jobId,
-        isDeleted: false
-      }).session(session);
+    const job = await Job.findOne({ _id: req.params.jobId, isDeleted: false });
+    if (!job || job.status !== "open") {
+      return res.status(400).json({ success: false, message: "This job is no longer accepting applications" });
+    }
 
-      if (!job || job.status !== "open") {
-        const error = new Error("This job is no longer accepting applications");
-        error.statusCode = 400;
-        throw error;
+    const [profile, existingApplication, existingOffer] = await Promise.all([
+      Profile.findOne({ user: req.user._id }),
+      Application.findOne({ student: req.user._id, job: job._id }),
+      Application.findOne({ student: req.user._id, status: "selected" })
+    ]);
+
+    if (!profile?.resume?.url) {
+      return res.status(400).json({ success: false, message: "Upload your resume before applying" });
+    }
+
+    if (existingOffer && String(existingOffer.job) !== String(job._id)) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have a selected placement offer and cannot apply for another job"
+      });
+    }
+
+    // Apply is open to everyone: students are never restricted by job
+    // requirements (skills, CGPA, backlogs, branch, deadline). A job stops
+    // accepting applications only when the company closes it, enforced above.
+
+    // Withdrawal is final for a given job. A student may not reapply
+    // after withdrawing an application. Keep the withdrawn record for
+    // history/audit purposes and block all subsequent applications.
+    if (existingApplication?.status === "withdrawn") {
+      return res.status(409).json({
+        success: false,
+        message: "You withdrew this application and cannot reapply for this job"
+      });
+    }
+
+    if (existingApplication) {
+      return res.status(409).json({ success: false, message: "You have already applied for this job" });
+    }
+
+    const createdApplication = await Application.create({
+      student: req.user._id,
+      job: job._id,
+      status: "applied",
+      appliedAt: new Date(),
+      statusUpdatedAt: new Date(),
+      coverLetter,
+      resume: {
+        url: profile.resume.url,
+        downloadUrl: "",
+        publicId: profile.resume.publicId,
+        originalName: profile.resume.originalName,
+        resourceType: profile.resume.resourceType,
+        deliveryType: profile.resume.deliveryType,
+        format: profile.resume.format
       }
-
-      if (job.deadline && new Date(job.deadline).getTime() <= Date.now()) {
-        const error = new Error("The application deadline has passed");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      const [profile, academicRecord, existingApplication, existingOffer] = await Promise.all([
-        Profile.findOne({ user: req.user._id }).session(session),
-        AcademicRecord.findOne({ user: req.user._id }).session(session),
-        Application.findOne({ student: req.user._id, job: job._id }).session(session),
-        Application.findOne({ student: req.user._id, status: "selected" }).session(session)
-      ]);
-
-      if (!profile?.resume?.url) {
-        const error = new Error("Upload your resume before applying");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      if (existingApplication) {
-        const error = new Error("You have already applied for this job");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      if (existingOffer && String(existingOffer.job) !== String(job._id)) {
-        const error = new Error("You already have a selected placement offer and cannot apply for another job");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      const eligibility = buildEligibility(job, academicRecord);
-      if (!eligibility.eligible) {
-        const error = new Error(`You are not eligible for this job: ${eligibility.reasons.join("; ")}`);
-        error.statusCode = 403;
-        throw error;
-      }
-
-      createdApplication = await Application.create([
-        {
-          student: req.user._id,
-          job: job._id,
-          status: "applied",
-          appliedAt: new Date(),
-          statusUpdatedAt: new Date(),
-          coverLetter,
-          resume: {
-            url: profile.resume.url,
-            downloadUrl: "",
-            publicId: profile.resume.publicId,
-            originalName: profile.resume.originalName,
-            resourceType: profile.resume.resourceType,
-            deliveryType: profile.resume.deliveryType,
-            format: profile.resume.format
-          }
-        }
-      ], { session });
-      createdApplication = createdApplication[0];
     });
 
     return res.status(201).json({
@@ -97,29 +87,45 @@ exports.applyForJob = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(409).json({ success: false, message: "You have already applied for this job" });
+      // The unique (student, job) index can race another request. Re-read the
+      // historical application so a withdrawn application always gets the
+      // final/no-reapply response instead of being mistaken for an active one.
+      const existing = await Application.findOne({
+        student: req.user._id,
+        job: req.params.jobId
+      }).select("status").lean();
+
+      if (existing?.status === "withdrawn") {
+        return res.status(409).json({
+          success: false,
+          message: "You withdrew this application and cannot reapply for this job"
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        message: "You have already applied for this job"
+      });
     }
 
+    console.error("Apply for job error:", error);
     return res.status(error.statusCode || 500).json({
       success: false,
       message: error.statusCode ? error.message : "Unable to submit application"
     });
-  } finally {
-    await session.endSession();
   }
 };
+
 
 exports.getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ student: req.user._id })
-      .select("-coverLetter -screeningAnswers -statusHistory -rejectionReason -withdrawalReason -resume.url -resume.publicId -resume.originalName -resume.resourceType -resume.deliveryType -resume.format")
       .populate({
         path: "job",
         select: "title description location salary deadline status company minimumCGPA maxBacklogs eligibleBranches minimumGraduationYear maximumGraduationYear requiredSkills isDeleted",
         populate: { path: "company", select: "name email" }
       })
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
     return res.json({ success: true, applications });
   } catch (error) {
@@ -138,11 +144,9 @@ exports.getJobApplications = async (req, res) => {
     if (!job) return res.status(404).json({ success: false, message: "Job not found" });
 
     const applications = await Application.find({ job: job._id })
-      .select("-coverLetter -screeningAnswers -statusHistory -rejectionReason -withdrawalReason -resume")
       .populate("student", "name email")
       .populate("job", "title description location salary deadline minimumCGPA maxBacklogs eligibleBranches minimumGraduationYear maximumGraduationYear requiredSkills")
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
 
     return res.json({ success: true, applications });
   } catch (error) {
@@ -152,7 +156,6 @@ exports.getJobApplications = async (req, res) => {
 
 
 exports.withdrawApplication = async (req, res) => {
-  const session = await mongoose.startSession();
   try {
     const application = await Application.findOne({
       _id: req.params.id,
@@ -171,21 +174,18 @@ exports.withdrawApplication = async (req, res) => {
     }
 
     const previousStatus = application.status;
+    application.status = "withdrawn";
+    application.statusUpdatedAt = new Date();
+    await application.save();
 
-    await session.withTransaction(async () => {
-      application.status = "withdrawn";
-      application.statusUpdatedAt = new Date();
-      await application.save({ session });
-
-      const interview = await Interview.findOne({ application: application._id, status: "scheduled" }).session(session);
-      if (interview) {
-        interview.status = "cancelled";
-        interview.studentResponse = "declined";
-        interview.studentResponseMessage = "The student withdrew the application and can no longer attend the interview.";
-        interview.studentRespondedAt = new Date();
-        await interview.save({ session });
-      }
-    });
+    const interview = await Interview.findOne({ application: application._id, status: "scheduled" });
+    if (interview) {
+      interview.status = "cancelled";
+      interview.studentResponse = "declined";
+      interview.studentResponseMessage = "The student withdrew the application and can no longer attend the interview.";
+      interview.studentRespondedAt = new Date();
+      await interview.save();
+    }
 
     try {
       const studentName = req.user.name || "The student";
@@ -207,8 +207,6 @@ exports.withdrawApplication = async (req, res) => {
   } catch (error) {
     console.error("Withdraw application error:", error);
     return res.status(500).json({ success: false, message: "Unable to withdraw application" });
-  } finally {
-    await session.endSession();
   }
 };
 
@@ -235,7 +233,7 @@ exports.updateApplicationStatus = async (req, res) => {
       shortlisted: ["shortlisted", "interview", "selected", "rejected"],
       interview: ["interview", "selected", "rejected"],
       selected: ["selected"],
-      rejected: ["rejected", "applied", "shortlisted"],
+      rejected: ["rejected"],
       withdrawn: ["withdrawn"]
     };
 
@@ -265,16 +263,26 @@ exports.updateApplicationStatus = async (req, res) => {
     }
 
     const previousStatus = application.status;
+
+    const setFields = {
+      status,
+      statusUpdatedAt: new Date()
+    };
+
+    if (status === "selected") {
+      setFields.offerStatus = "pending";
+      setFields.offerUpdatedAt = new Date();
+      setFields.selectedOfferKey = String(application.student._id);
+    }
+
+    const update = {
+      $set: setFields,
+      $unset: status === "selected" ? {} : { selectedOfferKey: 1 }
+    };
+
     const updated = await Application.findOneAndUpdate(
       { _id: application._id, status: previousStatus },
-      {
-        $set: {
-          status,
-          statusUpdatedAt: new Date(),
-          ...(status === "selected" ? { offerStatus: "pending", offerUpdatedAt: new Date() } : {}),
-          ...(status !== "selected" ? { offerStatus: null, offerUpdatedAt: null } : {})
-        }
-      },
+      update,
       { new: true }
     );
 
@@ -292,7 +300,7 @@ exports.updateApplicationStatus = async (req, res) => {
         to: application.student.email,
         subject: "Application Status Updated",
         text: `Your application for ${application.job.title} is now ${status}.`,
-        html: `<h2>Application Update</h2><p>Hello ${escapeHtml(application.student.name)},</p><p>Your application for <strong>${escapeHtml(application.job.title)}</strong> is now <strong>${status}</strong>.</p>`
+        html: `<h2>Application Update</h2><p>Hello ${escapeHtml(application.student.name)},</p><p>Your application for <strong>${escapeHtml(application.job.title)}</strong> is now <strong>${escapeHtml(status)}</strong>.</p>`
       });
     } catch (emailError) {
       console.error("Status email failed:", emailError.message);
@@ -301,6 +309,9 @@ exports.updateApplicationStatus = async (req, res) => {
     return res.json({ success: true, message: "Application status updated successfully", application: updated });
   } catch (error) {
     console.error("Update application status error:", error);
+    if (error.code === 11000 && error.message?.includes("selectedOfferKey")) {
+      return res.status(409).json({ success: false, message: "This student already has a selected placement offer" });
+    }
     return res.status(500).json({ success: false, message: "Unable to update application status" });
   }
 };
@@ -312,25 +323,31 @@ exports.respondToOffer = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid offer response" });
     }
 
-    const a = await Application.findOne({ _id: req.params.id, student: req.user._id, status: "selected" }).populate("job", "title company");
-    if (!a) return res.status(404).json({ success: false, message: "Selected offer not found" });
+    const a = await Application.findOne({
+      _id: req.params.id,
+      student: req.user._id,
+      status: "selected"
+    }).populate("job", "title company");
 
-    if (response === "accepted") {
-      // Revoke any other pending "selected" offers the student may hold so a
-      // student cannot accept placements from two companies simultaneously.
-      await Application.updateMany(
-        { student: req.user._id, status: "selected", _id: { $ne: a._id }, $or: [{ offerStatus: { $in: [null, "pending"] } }, { offerStatus: { $exists: false } }] },
-        { $set: { offerStatus: "declined", offerUpdatedAt: new Date() } }
-      );
-      try { await Notification.create({ user: req.user._id, title: "Other offers closed", message: "Your other pending placement offers have been closed because you accepted a placement offer.", type: "application", link: "/student/applications" }); } catch (n) { console.error("Offer revocation notification failed:", n.message); }
+    if (!a) {
+      return res.status(404).json({ success: false, message: "Selected offer not found" });
+    }
+
+    // Idempotency guard: once an offer is accepted or declined it is final.
+    // Prevent repeated calls from flipping the decision back and forth.
+    if (a.offerStatus === "accepted" || a.offerStatus === "declined") {
+      return res.status(409).json({
+        success: false,
+        message: `You have already ${a.offerStatus} this offer. The decision is final.`
+      });
     }
 
     a.offerStatus = response;
     a.offerUpdatedAt = new Date();
     await a.save();
-
     res.json({ success: true, message: `Offer ${response} successfully`, application: a });
   } catch (e) {
+    console.error("Respond to offer error:", e);
     res.status(500).json({ success: false, message: "Unable to update offer" });
   }
 };

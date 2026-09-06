@@ -12,8 +12,12 @@ exports.registerValidator = [
     .normalizeEmail(),
 
   body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password must contain at least 6 characters"),
+    .isLength({ min: 8, max: 128 })
+    .withMessage("Password must contain between 8 and 128 characters")
+    .matches(/[A-Z]/)
+    .withMessage("Password must contain at least one uppercase letter")
+    .matches(/[0-9]/)
+    .withMessage("Password must contain at least one number"),
 
   body("role")
     .optional()

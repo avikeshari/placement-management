@@ -18,32 +18,113 @@ const connectDB = require("../config/db");
 const users = [
   { name: "Demo Student", email: "student.demo@aviportal.com", password: "Student@123", role: "student" },
   { name: "Demo Company", email: "company.demo@aviportal.com", password: "Company@123", role: "company" },
-  { name: "Demo Admin", email: "admin.demo@aviportal.com", password: "Admin@123", role: "admin" }
+  { name: "Demo Admin", email: "admin.demo@aviportal.com", password: "Admin@123", role: "admin" },
+  { name: "Demo Student 2", email: "student2.demo@aviportal.com", password: "Student2@123", role: "student" },
+  { name: "Demo Student 3", email: "student3.demo@aviportal.com", password: "Student3@123", role: "student" },
+  { name: "Demo Student 4", email: "student4.demo@aviportal.com", password: "Student4@123", role: "student" },
+  { name: "Demo Company 2", email: "company2.demo@aviportal.com", password: "Company2@123", role: "company" },
+  { name: "Demo Company 3", email: "company3.demo@aviportal.com", password: "Company3@123", role: "company" }
 ];
 
 const demoResumeUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
-async function upsertDemoUser(demo) {
-  // Only seed the demo user's password if the account does not yet exist.
-  // If the account already exists, do NOT overwrite its password — a real
-  // user who registered with the same email must keep their credentials.
-  const existing = await User.findOne({ email: demo.email }).select("_id role");
-  if (existing) {
-    return User.findOneAndUpdate(
-      { email: demo.email },
-      { $setOnInsert: { role: demo.role, isActive: true } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    );
+const studentDemoData = [
+  {
+    userEmail: "student.demo@aviportal.com",
+    enrollmentNumber: "DEMO-CSE-001",
+    phone: "+91 98765 43210",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Computer Science and Engineering",
+    graduationYear: 2027,
+    cgpa: 8.7,
+    backlogs: 0,
+    profileSkills: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
+    academicSkills: ["JavaScript", "React", "Node.js", "MongoDB", "Git", "HTML", "CSS", "REST API", "Express"],
+    location: "Prayagraj, Uttar Pradesh",
+    resumeName: "demo-student-resume.pdf"
+  },
+  {
+    userEmail: "student2.demo@aviportal.com",
+    enrollmentNumber: "DEMO-IT-002",
+    phone: "+91 98765 43211",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Information Technology",
+    graduationYear: 2027,
+    cgpa: 8.1,
+    backlogs: 0,
+    profileSkills: ["Java", "Spring Boot", "SQL", "Git", "REST API"],
+    academicSkills: ["Java", "Spring Boot", "SQL", "Git", "REST API"],
+    location: "Lucknow, Uttar Pradesh",
+    resumeName: "student2-demo-resume.pdf"
+  },
+  {
+    userEmail: "student3.demo@aviportal.com",
+    enrollmentNumber: "DEMO-ECE-003",
+    phone: "+91 98765 43212",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Electronics and Communication Engineering",
+    graduationYear: 2026,
+    cgpa: 7.8,
+    backlogs: 0,
+    profileSkills: ["Python", "SQL", "Excel", "Power BI", "Data Analysis"],
+    academicSkills: ["Python", "SQL", "Excel", "Power BI", "Data Analysis"],
+    location: "Jaipur, Rajasthan",
+    resumeName: "student3-demo-resume.pdf"
+  },
+  {
+    userEmail: "student4.demo@aviportal.com",
+    enrollmentNumber: "DEMO-CSE-004",
+    phone: "+91 98765 43213",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Computer Science and Engineering",
+    graduationYear: 2028,
+    cgpa: 7.2,
+    backlogs: 1,
+    profileSkills: ["HTML", "CSS", "JavaScript", "Figma", "Git"],
+    academicSkills: ["HTML", "CSS", "JavaScript", "Figma", "Git"],
+    location: "Kanpur, Uttar Pradesh",
+    resumeName: "student4-demo-resume.pdf"
   }
+];
 
+const companyDemoData = [
+  {
+    userEmail: "company.demo@aviportal.com",
+    phone: "+91 98765 12345",
+    website: "https://example.com",
+    industry: "Information Technology",
+    description: "Demo technology company hiring students for software and graduate roles.",
+    location: "Bengaluru, Karnataka"
+  },
+  {
+    userEmail: "company2.demo@aviportal.com",
+    phone: "+91 98765 22345",
+    website: "https://example.com/analytics",
+    industry: "Data & Analytics",
+    description: "Demo analytics organization recruiting graduates for data and business roles.",
+    location: "Pune, Maharashtra"
+  },
+  {
+    userEmail: "company3.demo@aviportal.com",
+    phone: "+91 98765 32345",
+    website: "https://example.com/fintech",
+    industry: "Financial Technology",
+    description: "Demo fintech employer with software engineering and product opportunities.",
+    location: "Hyderabad, Telangana"
+  }
+];
+
+async function upsertDemoUser(demo) {
   const password = await bcrypt.hash(demo.password, 12);
-  return User.create({
-    name: demo.name,
-    email: demo.email,
-    password,
-    role: demo.role,
-    isActive: true
-  });
+  return User.findOneAndUpdate(
+    { email: demo.email },
+    { $set: { name: demo.name, email: demo.email, password, role: demo.role, isActive: true } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
 }
 
 function futureDate(days, hour = 23, minute = 59) {
@@ -110,81 +191,90 @@ async function removeApplicationAndInterview(studentId, jobId) {
 }
 
 async function seedDemoData({ reset = false } = {}) {
-  const student = await upsertDemoUser(users[0]);
-  const company = await upsertDemoUser(users[1]);
-  await upsertDemoUser(users[2]);
+  const created = {};
+  for (const demo of users) {
+    created[demo.email] = await upsertDemoUser(demo);
+  }
+  const student = created["student.demo@aviportal.com"];
+  const company = created["company.demo@aviportal.com"];
 
-  await Profile.findOneAndUpdate(
-    { user: student._id },
-    {
-      $set: {
-        phone: "+91 98765 43210",
-        college: "ABC Institute of Technology",
-        course: "B.Tech",
-        branch: "Computer Science and Engineering",
-        graduationYear: 2027,
-        cgpa: 8.7,
-        skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
-        location: "Prayagraj, Uttar Pradesh"
-      },
-      $setOnInsert: { user: student._id }
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-
-  await AcademicRecord.findOneAndUpdate(
-    { user: student._id },
-    {
-      $set: {
-        user: student._id,
-        studentEmail: student.email,
-        enrollmentNumber: "DEMO-CSE-001",
-        college: "ABC Institute of Technology",
-        course: "B.Tech",
-        branch: "Computer Science and Engineering",
-        graduationYear: 2027,
-        cgpa: 8.7,
-        backlogs: 0,
-        skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git", "HTML", "CSS", "REST API", "Express"]
-      }
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-
-  const studentProfile = await Profile.findOne({ user: student._id });
-  if (!studentProfile?.resume?.url) {
+  for (const data of studentDemoData) {
+    const user = created[data.userEmail];
     await Profile.findOneAndUpdate(
-      { user: student._id },
+      { user: user._id },
       {
         $set: {
-          resume: {
-            url: demoResumeUrl,
-            downloadUrl: "",
-            publicId: "",
-            originalName: "demo-student-resume.pdf",
-            resourceType: "",
-            deliveryType: "",
-            format: "pdf"
+          phone: data.phone,
+          college: data.college,
+          course: data.course,
+          branch: data.branch,
+          graduationYear: data.graduationYear,
+          cgpa: data.cgpa,
+          skills: data.profileSkills,
+          location: data.location
+        },
+        $setOnInsert: { user: user._id }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await AcademicRecord.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          user: user._id,
+          studentEmail: user.email,
+          enrollmentNumber: data.enrollmentNumber,
+          college: data.college,
+          course: data.course,
+          branch: data.branch,
+          graduationYear: data.graduationYear,
+          cgpa: data.cgpa,
+          backlogs: data.backlogs,
+          skills: data.academicSkills
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const userProfile = await Profile.findOne({ user: user._id });
+    if (!userProfile?.resume?.url) {
+      await Profile.findOneAndUpdate(
+        { user: user._id },
+        {
+          $set: {
+            resume: {
+              url: demoResumeUrl,
+              downloadUrl: "",
+              publicId: "",
+              originalName: data.resumeName,
+              resourceType: "",
+              deliveryType: "",
+              format: "pdf"
+            }
           }
         }
-      }
-    );
+      );
+    }
   }
 
-  await Profile.findOneAndUpdate(
-    { user: company._id },
-    {
-      $set: {
-        phone: "+91 98765 12345",
-        website: "https://example.com",
-        industry: "Information Technology",
-        description: "Demo technology company hiring students for software and graduate roles.",
-        location: "Bengaluru, Karnataka"
+  for (const data of companyDemoData) {
+    const user = created[data.userEmail];
+    await Profile.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          phone: data.phone,
+          website: data.website,
+          industry: data.industry,
+          description: data.description,
+          location: data.location
+        },
+        $setOnInsert: { user: user._id }
       },
-      $setOnInsert: { user: company._id }
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
 
   if (reset) {
     const jobs = await Job.find({ company: company._id }).select("_id");
@@ -375,7 +465,7 @@ if (require.main === module) {
     try {
       await connectDB();
       await seedDemoData({ reset: process.argv.includes("--reset") });
-      console.log("Demo users and demo placement data are ready.");
+      console.log("Demo users and demo placement data are ready (8 demo accounts: 4 students, 3 companies, 1 admin).");
       console.log("Demo flow: 1 applied, 1 shortlisted without interview, 1 interview scheduled, 2 unapplied jobs.");
     } catch (error) {
       console.error("Demo seed failed:", error);

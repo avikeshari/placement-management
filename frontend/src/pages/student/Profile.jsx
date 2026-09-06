@@ -30,8 +30,7 @@ const Profile = () => {
   const [openingResume, setOpeningResume] = useState(false);
   const [downloadingResume, setDownloadingResume] =
     useState(false);
-  const [confirmAction, setConfirmAction] =
-    useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [error, setError] = useState("");
   const [resume, setResume] = useState(null);
   const [academicRecord, setAcademicRecord] =
@@ -439,12 +438,6 @@ const Profile = () => {
         return;
       }
 
-      setConfirmAction(
-        "resume"
-      );
-    };
-
-  const doResumeDelete = async () => {
       try {
         setUploading(true);
 
@@ -471,18 +464,12 @@ const Profile = () => {
         );
       } finally {
         setUploading(false);
-        setConfirmAction(null);
+        setConfirmDialog(null);
       }
     };
 
   const handleDeleteAccount =
     async () => {
-      setConfirmAction(
-        "account"
-      );
-    };
-
-  const doDeleteAccount = async () => {
       try {
         setSaving(true);
 
@@ -491,12 +478,14 @@ const Profile = () => {
         );
 
         localStorage.removeItem(
-          "token"
-        );
-
-        localStorage.removeItem(
           "user"
         );
+
+        try {
+          await api.post("/auth/logout");
+        } catch {
+          // Ignore: session is being destroyed anyway.
+        }
 
         toast.success(
           "Account deleted successfully"
@@ -513,7 +502,7 @@ const Profile = () => {
         );
       } finally {
         setSaving(false);
-        setConfirmAction(null);
+        setConfirmDialog(null);
       }
     };
 
@@ -593,9 +582,8 @@ const Profile = () => {
               </span>
 
               <p className="font-semibold">
-                {academicRecord.backlogs === undefined || academicRecord.backlogs === null
-                  ? "-"
-                  : academicRecord.backlogs}
+                {academicRecord.backlogs ??
+                  0}
               </p>
             </div>
           </div>
@@ -818,7 +806,7 @@ const Profile = () => {
                 <button
                   type="button"
                   onClick={
-                    handleResumeDelete
+                    () => setConfirmDialog("resume")
                   }
                   disabled={
                     uploading ||
@@ -943,7 +931,7 @@ const Profile = () => {
           <button
             type="button"
             onClick={
-              handleDeleteAccount
+              () => setConfirmDialog("account")
             }
             disabled={
               saving || uploading
@@ -960,24 +948,16 @@ const Profile = () => {
       </section>
 
       <ConfirmDialog
-        open={confirmAction === "resume"}
-        title="Delete resume?"
-        message="Are you sure you want to delete your resume? This cannot be undone."
-        confirmText="Delete Resume"
+        open={Boolean(confirmDialog)}
+        title={confirmDialog === "account" ? "Delete Account" : "Delete Resume"}
+        message={confirmDialog === "account"
+          ? "Delete your account permanently? Your profile, applications, interviews and uploaded resume will be removed. This cannot be undone."
+          : "Are you sure you want to delete your resume? This cannot be undone."}
+        confirmLabel={confirmDialog === "account" ? "Delete Account" : "Delete Resume"}
         danger
-        loading={uploading}
-        onConfirm={doResumeDelete}
-        onCancel={() => setConfirmAction(null)}
-      />
-      <ConfirmDialog
-        open={confirmAction === "account"}
-        title="Delete your account?"
-        message="Delete your account permanently? Your profile, applications, interviews and uploaded resume will be removed. This cannot be undone."
-        confirmText="Delete Account"
-        danger
-        loading={saving}
-        onConfirm={doDeleteAccount}
-        onCancel={() => setConfirmAction(null)}
+        loading={saving || uploading}
+        onConfirm={confirmDialog === "account" ? handleDeleteAccount : handleResumeDelete}
+        onCancel={() => setConfirmDialog(null)}
       />
     </section>
   );

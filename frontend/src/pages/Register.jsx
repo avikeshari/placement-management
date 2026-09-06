@@ -4,12 +4,10 @@ import toast from "react-hot-toast";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import getErrorMessage from "../utils/getErrorMessage";
-import usePageTitle from "../hooks/usePageTitle";
 
 const Register = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  usePageTitle("Create Account");
 
   const [form, setForm] = useState({
     name: "",
@@ -22,6 +20,20 @@ const Register = () => {
 
   const submit = async (event) => {
     event.preventDefault();
+
+    const { password } = form;
+    if (password.length < 8 || password.length > 128) {
+      toast.error("Password must contain between 8 and 128 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Password must contain at least one number");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -76,11 +88,10 @@ const Register = () => {
           Join the placement portal.
         </p>
 
-        <label htmlFor="reg-name" className="block text-sm font-medium text-slate-700 mb-1">Full name</label>
         <input
-          id="reg-name"
           required
-          placeholder="Your full name"
+          aria-label="Full name"
+          placeholder="Full name"
           value={form.name}
           onChange={(e) =>
             setForm({
@@ -91,12 +102,11 @@ const Register = () => {
           className="w-full border rounded-lg px-3 py-2.5 mb-4"
         />
 
-        <label htmlFor="reg-email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
         <input
-          id="reg-email"
           required
           type="email"
-          placeholder="you@example.com"
+          aria-label="Email"
+          placeholder="Email"
           value={form.email}
           onChange={(e) =>
             setForm({
@@ -107,13 +117,12 @@ const Register = () => {
           className="w-full border rounded-lg px-3 py-2.5 mb-4"
         />
 
-        <label htmlFor="reg-password" className="block text-sm font-medium text-slate-700 mb-1">Password</label>
         <input
-          id="reg-password"
           required
-          minLength={6}
+          minLength={8}
           type="password"
-          placeholder="At least 6 characters"
+          aria-label="Password"
+          placeholder="Password (8+ chars, 1 uppercase, 1 number)"
           value={form.password}
           onChange={(e) =>
             setForm({
@@ -124,9 +133,7 @@ const Register = () => {
           className="w-full border rounded-lg px-3 py-2.5 mb-4"
         />
 
-        <label htmlFor="reg-role" className="block text-sm font-medium text-slate-700 mb-1">I am a</label>
         <select
-          id="reg-role"
           value={form.role}
           onChange={(e) =>
             setForm({
@@ -145,7 +152,6 @@ const Register = () => {
         </select>
 
         <button
-          type="submit"
           disabled={loading}
           className="theme-glow-button w-full disabled:bg-slate-500 text-white py-3 rounded-lg"
         >

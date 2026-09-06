@@ -4,11 +4,11 @@ const Job = require("../models/Job");
 const Application = require("../models/Application");
 const Interview = require("../models/Interview");
 const AcademicRecord = require("../models/AcademicRecord");
-const sanitizeError = require("../utils/sanitizeError");
 
 const csvEscape = (value) => {
   const text = value === null || value === undefined ? "" : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
+  const neutralized = ["=", "+", "-", "@", "\t", "\r"].includes(text.charAt(0)) ? `'${text}` : text;
+  return `"${neutralized.replace(/"/g, '""')}"`;
 };
 
 const sendCsv = (res, filename, headers, rows) => {
@@ -89,7 +89,7 @@ exports.getStats = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -120,7 +120,7 @@ exports.getStudents = async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -147,7 +147,7 @@ exports.getCompanies = async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -174,14 +174,13 @@ exports.getJobs = async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getApplications = async (req, res) => {
   try {
     const applications = await Application.find()
-      .select("-coverLetter -screeningAnswers -statusHistory -rejectionReason -withdrawalReason -resume")
       .populate("student", "name email")
       .populate("job", "title location salary company")
       .sort({ createdAt: -1 })
@@ -194,7 +193,7 @@ exports.getApplications = async (req, res) => {
 
     res.json({ success: true, applications });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -207,12 +206,11 @@ exports.getInterviews = async (req, res) => {
         path: "application",
         populate: { path: "job", select: "title location" }
       })
-      .sort({ scheduledAt: 1 })
-      .lean();
+      .sort({ scheduledAt: 1 });
 
     res.json({ success: true, interviews });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -252,7 +250,7 @@ exports.getAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -276,7 +274,7 @@ exports.updateUserStatus = async (req, res) => {
       user: { _id: user._id, isActive: user.isActive }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -325,7 +323,7 @@ exports.deleteUser = async (req, res) => {
 
     res.json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -344,7 +342,7 @@ exports.deleteJob = async (req, res) => {
 
     res.json({ success: true, message: "Job archived successfully. Application and interview history has been preserved." });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -412,9 +410,9 @@ exports.getReport = async (req, res) => {
 
     return res.status(400).json({ success: false, message: "Unknown report type" });
   } catch (error) {
-    res.status(500).json({ success: false, message: sanitizeError(error) });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.exportCompanyDatabase=async(req,res)=>{try{const companies=await User.find({role:"company"}).lean();const profiles=await Profile.find({user:{$in:companies.map(x=>x._id)}}).lean();const map=new Map(profiles.map(x=>[String(x.user),x]));return sendCsv(res,"company-database.csv",["Name","Email","Phone","Industry","Website","Location","Description"],companies.map(c=>{const p=map.get(String(c._id))||{};return [c.name,c.email,p.phone,p.industry,p.website,p.location,p.description];}));}catch(e){res.status(500).json({success:false,message:e.message});}};
-exports.importCompanyDatabase=async(req,res)=>{try{if(!req.file)return res.status(400).json({success:false,message:"Please upload a CSV file"});const csv=require("csv-parser");const {Readable}=require("stream");const rows=[];await new Promise((resolve,reject)=>Readable.from(req.file.buffer).pipe(csv()).on("data",r=>rows.push(r)).on("end",resolve).on("error",reject));const entries=[];for(const row of rows){const email=String(row.email||row.Email||"").trim().toLowerCase();if(!email)continue;entries.push({email,row});}let count=0;if(entries.length){const emails=[...new Set(entries.map(e=>e.email))];const users=await User.find({email:{$in:emails},role:"company"}).select("_id email").lean();const userByEmail=new Map(users.map(u=>[u.email.toLowerCase(),u]));const ops=[];for(const {email,row} of entries){const user=userByEmail.get(email);if(!user)continue;ops.push({updateOne:{filter:{user:user._id},update:{$set:{phone:row.phone||row.Phone||"",industry:row.industry||row.Industry||"",website:row.website||row.Website||"",location:row.location||row.Location||"",description:row.description||row.Description||""}},upsert:true}});}if(ops.length){await Profile.bulkWrite(ops,{ordered:false});count=ops.length;}}res.json({success:true,message:`Updated ${count} existing company records`});}catch(e){res.status(500).json({success:false,message:"Unable to import company CSV"});}};
+exports.importCompanyDatabase=async(req,res)=>{try{if(!req.file)return res.status(400).json({success:false,message:"Please upload a CSV file"});const csv=require("csv-parser");const {Readable}=require("stream");const rows=[];await new Promise((resolve,reject)=>Readable.from(req.file.buffer).pipe(csv()).on("data",r=>rows.push(r)).on("end",resolve).on("error",reject));let count=0;for(const row of rows){const email=String(row.email||row.Email||"").trim().toLowerCase();if(!email)continue;const user=await User.findOne({email,role:"company"});if(!user)continue;await Profile.findOneAndUpdate({user:user._id},{$set:{phone:row.phone||row.Phone||"",industry:row.industry||row.Industry||"",website:row.website||row.Website||"",location:row.location||row.Location||"",description:row.description||row.Description||""}},{upsert:true});count++;}res.json({success:true,message:`Updated ${count} existing company records`});}catch(e){res.status(500).json({success:false,message:"Unable to import company CSV"});}};

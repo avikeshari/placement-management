@@ -48,15 +48,15 @@ const normalizeBranches = (value) => {
 
 const buildEligibility = (job, academicRecord) => {
   const reasons = [];
-  if (!academicRecord || academicRecord.verified !== true) {
-    return { eligible: false, reasons: ["Verified academic record is required"] };
+  if (!academicRecord) {
+    return { eligible: false, reasons: ["Academic record is required"] };
   }
 
   if (Number.isFinite(job.minimumCGPA) && (academicRecord.cgpa === undefined || academicRecord.cgpa < job.minimumCGPA)) {
     reasons.push(`CGPA must be at least ${job.minimumCGPA}`);
   }
 
-  if (Number.isFinite(job.maxBacklogs) && (academicRecord.backlogs ?? 0) > job.maxBacklogs) {
+  if (job.maxBacklogs !== null && job.maxBacklogs !== undefined && Number.isFinite(Number(job.maxBacklogs)) && (academicRecord.backlogs ?? 0) > Number(job.maxBacklogs)) {
     reasons.push(`Maximum allowed backlogs: ${job.maxBacklogs}`);
   }
 
@@ -103,6 +103,11 @@ exports.getJobs = async (req, res) => {
     const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 12, 1), 50);
     const now = new Date();
 
+    // Cap the maximum number of documents that can be skipped so deep
+    // pagination cannot become a denial-of-service vector on the database.
+    const maxSkip = 100000;
+    const safeSkip = Math.min((safePage - 1) * safeLimit, maxSkip);
+
     const filter = {
       status: "open",
       isDeleted: false,
@@ -137,7 +142,7 @@ exports.getJobs = async (req, res) => {
       Job.find(filter)
         .populate("company", "name email")
         .sort({ createdAt: -1 })
-        .skip((safePage - 1) * safeLimit)
+        .skip(safeSkip)
         .limit(safeLimit)
         .lean(),
       Job.countDocuments(filter)
@@ -250,7 +255,7 @@ exports.createJob = async (req, res) => {
       location: req.body.location?.trim() || "",
       salary: Number(req.body.salary),
       minimumCGPA: Number(req.body.minimumCGPA),
-      maxBacklogs: req.body.maxBacklogs === "" || req.body.maxBacklogs === undefined ? 0 : Number(req.body.maxBacklogs),
+      maxBacklogs: req.body.maxBacklogs === "" || req.body.maxBacklogs === undefined ? null : Number(req.body.maxBacklogs),
       eligibleBranches,
       minimumGraduationYear: minYear,
       maximumGraduationYear: maxYear,
@@ -311,7 +316,7 @@ exports.updateJob = async (req, res) => {
     if (req.body.salary !== undefined) job.salary = Number(req.body.salary);
     if (req.body.minimumCGPA !== undefined) job.minimumCGPA = Number(req.body.minimumCGPA);
     if (req.body.requiredSkills !== undefined) job.requiredSkills = skills;
-    if (req.body.maxBacklogs !== undefined) job.maxBacklogs = Number(req.body.maxBacklogs);
+    if (req.body.maxBacklogs !== undefined) job.maxBacklogs = (req.body.maxBacklogs === "" || req.body.maxBacklogs === null) ? null : Number(req.body.maxBacklogs);
     if (req.body.eligibleBranches !== undefined) job.eligibleBranches = normalizeBranches(req.body.eligibleBranches);
     if (req.body.minimumGraduationYear !== undefined) job.minimumGraduationYear = req.body.minimumGraduationYear === "" ? undefined : Number(req.body.minimumGraduationYear);
     if (req.body.maximumGraduationYear !== undefined) job.maximumGraduationYear = req.body.maximumGraduationYear === "" ? undefined : Number(req.body.maximumGraduationYear);
@@ -381,3 +386,4 @@ exports.deleteJob = async (req, res) => {
 };
 
 exports.buildEligibility = buildEligibility;
+exports.escapeRegex = escapeRegex;

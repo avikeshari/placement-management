@@ -55,7 +55,18 @@ const interviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-interviewSchema.index({ student: 1, scheduledAt: 1 });
-interviewSchema.index({ company: 1, scheduledAt: 1 });
+// Database-level double-booking protection: a student (or company) can only
+// have one active interview at a given instant. Cancelled interviews are
+// excluded so a freed slot can be reused. NOTE: Mongoose only auto-builds
+// indexes outside production; in a production deployment the partial unique
+// indexes must be created manually (e.g. via createIndexes) before rollout.
+interviewSchema.index(
+  { student: 1, scheduledAt: 1 },
+  { unique: true, partialFilterExpression: { status: { $ne: "cancelled" } } }
+);
+interviewSchema.index(
+  { company: 1, scheduledAt: 1 },
+  { unique: true, partialFilterExpression: { status: { $ne: "cancelled" } } }
+);
 
 module.exports = mongoose.model("Interview", interviewSchema);

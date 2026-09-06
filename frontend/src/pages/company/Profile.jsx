@@ -23,26 +23,47 @@ const Profile = () => {
   const change = (e) => setProfile((p) => ({ ...p, [e.target.name]: e.target.value }));
   const save = async (e) => {
     e.preventDefault();
+    if (profile?.phone && !/^[0-9+\-() ]{6,20}$/.test(profile.phone)) {
+      toast.error("Phone number must contain only digits, spaces, +, - or parentheses (6-20 characters).");
+      return;
+    }
+    if (profile?.website && profile.website.trim()) {
+      try {
+        const url = new URL(profile.website.trim());
+        if (!/^https?:$/.test(url.protocol)) throw new Error();
+      } catch {
+        toast.error("Website must be a valid http(s) URL, e.g. https://example.com");
+        return;
+      }
+    }
     try { setSaving(true); const { data } = await api.put("/profile/me", profile); setProfile(data.profile); toast.success("Company profile updated"); }
     catch (error) { toast.error(getErrorMessage(error, "Unable to update profile.")); }
     finally { setSaving(false); }
   };
   const remove = async () => {
-    try { setDeleting(true); await api.delete("/profile/me"); localStorage.clear(); window.location.href = "/login"; }
-    catch (error) { toast.error(getErrorMessage(error, "Unable to delete company account.")); setDeleting(false); setConfirmDelete(false); }
+    try {
+      setDeleting(true);
+      await api.delete("/profile/me");
+      localStorage.removeItem("user");
+      try { await api.post("/auth/logout"); } catch { /* Session is already destroyed. */ }
+      window.location.href = "/login";
+    }
+    catch (error) { toast.error(getErrorMessage(error, "Unable to delete company account.")); setDeleting(false); }
+    finally { setConfirmDelete(false); }
   };
 
   if (loading) return <Loader text="Loading profile..." />;
   return <section className="space-y-6 max-w-4xl"><div className="flex items-center gap-3"><div className="bg-blue-100 text-blue-700 p-3 rounded-xl"><Building2 /></div><div><h1 className="text-2xl md:text-3xl font-bold">Company Profile</h1><p className="text-slate-500">Manage your company information.</p></div></div>
     <form onSubmit={save} className="bg-white border rounded-2xl p-6 space-y-5"><div className="grid md:grid-cols-2 gap-5">
-      {["phone","location","industry","website"].map((name) => <div key={name}><label htmlFor={`company-${name}`} className="block text-sm font-medium mb-2 capitalize">{name}</label><input id={`company-${name}`} name={name} value={profile?.[name] || ""} onChange={change} className="w-full border rounded-lg px-3 py-2.5" /></div>)}
-    </div><div><label htmlFor="company-description" className="block text-sm font-medium mb-2">Company Description</label><textarea id="company-description" name="description" rows="5" value={profile?.description || ""} onChange={change} className="w-full border rounded-lg px-3 py-2.5" /></div><button type="submit" disabled={saving} className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400"><Save size={17}/>{saving ? "Saving..." : "Save Profile"}</button></form>
+      {["phone","location","industry","website"].map((name) => <div key={name}><label className="block text-sm font-medium mb-2 capitalize">{name}</label><input name={name} value={profile?.[name] || ""} onChange={change} className="w-full border rounded-lg px-3 py-2.5" /></div>)}
+    </div><div><label className="block text-sm font-medium mb-2">Company Description</label><textarea name="description" rows="5" value={profile?.description || ""} onChange={change} className="w-full border rounded-lg px-3 py-2.5" /></div><button disabled={saving} className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400"><Save size={17}/>{saving ? "Saving..." : "Save Profile"}</button></form>
     <section className="bg-red-50 border border-red-200 rounded-2xl p-6"><h2 className="font-bold text-red-700">Danger Zone</h2><p className="text-sm text-slate-600 mt-2">Deleting your company permanently removes your jobs and associated recruitment records.</p><button onClick={() => setConfirmDelete(true)} disabled={deleting} className="mt-4 inline-flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400"><Trash2 size={17}/>{deleting ? "Deleting..." : "Delete Company Account"}</button></section>
+
     <ConfirmDialog
       open={confirmDelete}
-      title="Delete company account?"
-      message="Delete the company account? All jobs, applications and interviews will be permanently removed."
-      confirmText="Delete Account"
+      title="Delete Company Account"
+      message="Delete the company account? All jobs, applications and interviews will be permanently removed. This action cannot be undone."
+      confirmLabel="Delete Account"
       danger
       loading={deleting}
       onConfirm={remove}

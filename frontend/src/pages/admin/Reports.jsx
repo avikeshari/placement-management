@@ -19,7 +19,11 @@ const Reports = () => {
     try {
       setLoading(type);
       const response = await api.get(`/admin/reports/${type}`, { responseType: "blob" });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: "text/csv" }));
+      const blob = new Blob([response.data], { type: "text/csv" });
+      if (blob.size < 512) {
+        toast(`The ${type} report is empty — no records were found.`, { icon: "ℹ️" });
+      }
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = `${type}.csv`;

@@ -14,7 +14,7 @@ const jobSchema = new mongoose.Schema(
     location: { type: String, trim: true, default: "" },
     salary: Number,
     minimumCGPA: { type: Number, min: 0, max: 10 },
-    maxBacklogs: { type: Number, min: 0, default: 0 },
+    maxBacklogs: { type: Number, min: 0, default: null },
     eligibleBranches: { type: [String], default: [] },
     minimumGraduationYear: Number,
     maximumGraduationYear: Number,

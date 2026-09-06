@@ -14,7 +14,7 @@ const EditJob = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const today = useMemo(localDate, []);
-  const [form, setForm] = useState({ title: "", type: "job", description: "", location: "", salary: "", minimumCGPA: "", maxBacklogs: "0", eligibleBranches: "", minimumGraduationYear: "", maximumGraduationYear: "", requiredSkills: "", deadline: "" });
+  const [form, setForm] = useState({ title: "", type: "job", description: "", location: "", salary: "", minimumCGPA: "", maxBacklogs: "", eligibleBranches: "", minimumGraduationYear: "", maximumGraduationYear: "", requiredSkills: "", deadline: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -29,7 +29,7 @@ const EditJob = () => {
           location: job.location || "",
           salary: job.salary ?? "",
           minimumCGPA: job.minimumCGPA ?? "",
-          maxBacklogs: job.maxBacklogs ?? 0,
+          maxBacklogs: job.maxBacklogs ?? "",
           eligibleBranches: (job.eligibleBranches || []).join(", "),
           minimumGraduationYear: job.minimumGraduationYear ?? "",
           maximumGraduationYear: job.maximumGraduationYear ?? "",
@@ -47,11 +47,12 @@ const EditJob = () => {
     const branches = form.eligibleBranches.split(",").map((s) => s.trim()).filter(Boolean);
     const salary = Number(form.salary);
     const cgpa = Number(form.minimumCGPA);
-    const maxBacklogs = Number(form.maxBacklogs);
+    const maxBacklogsRaw = form.maxBacklogs?.trim();
+    const maxBacklogs = maxBacklogsRaw === "" || maxBacklogsRaw === undefined ? null : Number(maxBacklogsRaw);
     if (!form.title.trim() || form.description.trim().length < 10) return toast.error("Title and description are required");
     if (!Number.isFinite(salary) || salary <= 0) return toast.error("Enter a valid salary");
     if (!Number.isFinite(cgpa) || cgpa < 0 || cgpa > 10) return toast.error("Enter a valid CGPA");
-    if (!Number.isInteger(maxBacklogs) || maxBacklogs < 0) return toast.error("Maximum backlogs must be a non-negative integer");
+    if (maxBacklogs !== null && (!Number.isInteger(maxBacklogs) || maxBacklogs < 0)) return toast.error("Maximum backlogs must be a non-negative integer");
     if (!skills.length) return toast.error("At least one required skill is required");
     if (form.deadline && form.deadline < today) return toast.error("Application deadline cannot be moved into the past");
 
@@ -92,7 +93,7 @@ const EditJob = () => {
       <form onSubmit={submit} className="bg-white border rounded-2xl p-6 space-y-5">
         {[["title", "Job Title"], ["location", "Location"], ["salary", "Salary"], ["minimumCGPA", "Minimum CGPA"], ["maxBacklogs", "Maximum Backlogs"], ["minimumGraduationYear", "Minimum Graduation Year"], ["maximumGraduationYear", "Maximum Graduation Year"], ["eligibleBranches", "Eligible Branches (comma separated)"], ["requiredSkills", "Required Skills (comma separated)"], ["deadline", "Deadline"]].map(([name, label]) => (
           <label key={name} className="block text-sm font-medium">
-            {label}{["title", "location", "salary", "minimumCGPA", "maxBacklogs", "requiredSkills"].includes(name) ? " *" : ""}
+            {label}{["title", "location", "salary", "minimumCGPA", "requiredSkills"].includes(name) ? " *" : ""}
             <input
               name={name}
               type={name === "deadline" ? "date" : ["salary", "minimumCGPA", "maxBacklogs", "minimumGraduationYear", "maximumGraduationYear"].includes(name) ? "number" : "text"}
@@ -104,7 +105,7 @@ const EditJob = () => {
           </label>
         ))}
         <label className="block text-sm font-medium">Description *<textarea rows="7" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-2 w-full border rounded-lg px-3 py-2.5" /></label>
-        <div className="flex gap-3"><button type="submit" disabled={saving} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{saving ? "Saving..." : "Save Changes"}</button><button type="button" onClick={() => navigate("/company/jobs")} className="border px-5 py-2.5 rounded-lg">Cancel</button></div>
+        <div className="flex gap-3"><button disabled={saving} className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400">{saving ? "Saving..." : "Save Changes"}</button><button type="button" onClick={() => navigate("/company/jobs")} className="border px-5 py-2.5 rounded-lg">Cancel</button></div>
       </form>
     </section>
   );

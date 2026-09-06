@@ -5,6 +5,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
 
 const connectDB = require("./config/db");
 const validateEnvironment = require("./config/env");
@@ -31,7 +32,14 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+      // Reject requests without an Origin header when they carry credentials,
+      // and only allow listed origins. Block null origins unless explicitly
+      // allowed (they are not part of the allow-list below).
+      if (!origin) {
+        return callback(null, false);
+      }
+
+      if (allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         return callback(null, true);
       }
 
@@ -41,29 +49,47 @@ app.use(
   })
 );
 
+app.use(cookieParser());
+
 app.use(express.json({ limit: "1mb" }));
+
+// Global API rate limit to protect all endpoints from abuse. Stricter
+// limits for authentication are applied on the /api/auth router below.
+// Limits and window are configurable so deployments can tune them without
+// code changes. Behind a reverse proxy, trust the forwarded IP so limiter
+// keys follow the real client instead of the proxy address.
+if (environment.nodeEnv === "production") {
+  app.set("trust proxy", 1);
+}
+
+const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
+const globalRateLimitMax = Number(process.env.GLOBAL_RATE_LIMIT_MAX) || 500;
+const authRateLimitMax = Number(process.env.AUTH_RATE_LIMIT_MAX) || 100;
+const authRateLimitExemptGet = process.env.AUTH_RATE_LIMIT_EXEMPT_GET !== "false";
+
+const globalLimiter = rateLimit({
+  windowMs: rateLimitWindowMs,
+  max: globalRateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === "/api/health"
+});
+
+app.use("/api", globalLimiter);
 
 app.use(
   "/api/auth",
   rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: rateLimitWindowMs,
+    max: authRateLimitMax,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    // GET /api/auth/me runs on every authenticated page load; counting it
+    // against the login brute-force budget lets ordinary browsing exhaust
+    // the shared authentication limit. Login/register remain protected.
+    skip: (req) => authRateLimitExemptGet && req.method === "GET" && req.path === "/me"
   })
 );
-
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 600,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1"
-});
-
-// Apply a general rate limit to all API routes to mitigate scraping and
-// brute-force abuse beyond the stricter auth limit.
-app.use("/api", generalLimiter);
 
 app.get("/api/health", (req, res) => {
   res.json({
@@ -85,6 +111,7 @@ app.use("/api/messages", require("./routes/messageRoutes"));
 app.use("/api/academic", require("./routes/academicRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/drives", require("./routes/driveRoutes"));
+app.use("/api/benchmark", require("./routes/benchmarkRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/saved-jobs", require("./routes/savedJobRoutes"));
 app.use("/api/saved-searches", require("./routes/savedSearchRoutes"));
@@ -124,13 +151,10 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    // Automatically create/check the permanent production admin.
-    // Demo data is only seeded in non-production environments, and never
-    // overwrites the credentials of already-existing demo accounts.
+    // Automatically create/check the permanent production admin
+    // and ensure the demo account/profile data exists.
     await createProductionAdmin();
-    if (environment.nodeEnv !== "production") {
-      await seedDemoData();
-    }
+    await seedDemoData();
 
     setInterval(() => runInterviewReminders().catch((error) => console.error("Interview reminder job failed:", error.message)), 15 * 60 * 1000);
     runInterviewReminders().catch((error) => console.error("Initial interview reminder check failed:", error.message));
@@ -138,7 +162,7 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${environment.nodeEnv}`);
-      console.log("Mounted API routes: /api/health, /api/auth, /api/profile, /api/jobs, /api/applications, /api/interviews, /api/messages, /api/academic, /api/admin, /api/drives, /api/notifications, /api/saved-jobs, /api/saved-searches, /api/company-follows, /api/candidate-search, /api/career-events, /api/audit-logs, /api/saved-candidates");
+      console.log("Mounted API routes: /api/health, /api/auth, /api/profile, /api/jobs, /api/applications, /api/interviews, /api/messages, /api/academic, /api/admin, /api/drives, /api/benchmark, /api/notifications, /api/saved-jobs, /api/saved-searches, /api/company-follows, /api/candidate-search, /api/career-events, /api/audit-logs, /api/saved-candidates");
     });
   } catch (error) {
     console.error(

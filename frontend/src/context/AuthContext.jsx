@@ -1,92 +1,65 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/axios";
 
 const AuthContext = createContext(null);
 
-const decodeToken = (token) => {
-  try {
-    const base64 = token.split(".")[1];
-    if (!base64) return null;
-    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(decodeURIComponent(escape(window.atob(normalized))));
-  } catch {
-    return null;
-  }
-};
-
-const isTokenExpired = (token) => {
-  const decoded = decodeToken(token);
-  if (!decoded?.exp) return false;
-  return decoded.exp * 1000 <= Date.now();
-};
-
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token && isTokenExpired(token)) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        return null;
-      }
-      return JSON.parse(localStorage.getItem("user")) || null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [checkingAuth, setCheckingAuth] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const login = (data) => {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+    // The JWT is stored as an httpOnly cookie by the server. We only keep the
+    // non-sensitive user object for the UI. Never store the token in localStorage.
     setUser(data.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Even if the server request fails, clear the local session.
+    }
     setUser(null);
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    let cancelled = false;
 
-    if (token && isTokenExpired(token)) {
-      logout();
-      return;
-    }
+    const bootstrap = async () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            if (!cancelled) setUser(parsed);
+          } catch {
+            // ignore malformed stored user
+          }
+        }
 
-    const storedUser = localStorage.getItem("user");
-
-    if (storedUser && token) {
-      // Validate the stored user against the server so stale/tampered data
-      // cannot present a false authenticated state.
-      setCheckingAuth(true);
-      api
-        .get("/profile/me")
-        .then((response) => {
-          const profile = response.data.profile;
-          const profileUser = profile?.user;
-          const freshUser = {
-            id: profileUser?.id || profileUser?._id,
-            name: profileUser?.name,
-            email: profileUser?.email,
-            role: profileUser?.role
-          };
+        // Validate the httpOnly session cookie against the server so deactivated
+        // or deleted accounts are signed out on refresh.
+        const response = await api.get("/auth/me");
+        const freshUser = response.data.user;
+        if (!cancelled && freshUser) {
           setUser(freshUser);
           localStorage.setItem("user", JSON.stringify(freshUser));
-        })
-        .catch(() => {
-          logout();
-        })
-        .finally(() => setCheckingAuth(false));
-    }
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null);
+          localStorage.removeItem("user");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -96,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isAuthenticated: Boolean(user),
-        checkingAuth
+        loading
       }}
     >
       {children}

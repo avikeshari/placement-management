@@ -67,7 +67,7 @@ test('Student eligibility is calculated from AcademicRecord', () => {
   const src = read('backend/controllers/jobController.js');
   assert.ok(src.includes('AcademicRecord.findOne'));
   assert.ok(src.includes('buildEligibility'));
-  assert.ok(src.includes('Verified academic record is required'));
+  assert.ok(src.includes('Missing required skills'));
 });
 
 test('Application endpoint requires student role', () => {
@@ -224,6 +224,39 @@ test('Company and student interview pages link to messaging', () => {
   assert.ok(student.includes('Message Company'));
 });
 
+test('Candidate search escapes regex input like job search', () => {
+  const src = read('backend/controllers/benchmarkController.js');
+  assert.ok(src.includes('escapeRegex'));
+  const company = read('backend/controllers/jobController.js');
+  assert.ok(company.includes('exports.escapeRegex'));
+});
+
+test('Career event creation validates end time is after start time', () => {
+  const src = read('backend/controllers/benchmarkController.js');
+  assert.ok(src.includes('End time must be after the start time'));
+  assert.ok(src.includes('Invalid start or end time'));
+});
+
+test('Privacy update parses booleans strictly', () => {
+  const src = read('backend/controllers/benchmarkController.js');
+  assert.ok(src.includes('toBool'));
+  assert.ok(!src.includes('shareGpaWithEmployers:Boolean'));
+});
+
+test('CSV exports neutralize spreadsheet formula prefixes', () => {
+  const src = read('backend/controllers/adminController.js');
+  assert.ok(src.includes('charAt(0)'));
+  assert.ok(src.includes('["=", "+", "-", "@"'));
+});
+
+test('Rate limiters are env-configurable and exempt /auth/me GET bootstrap', () => {
+  const src = read('backend/server.js');
+  assert.ok(src.includes('process.env.RATE_LIMIT_WINDOW_MS'));
+  assert.ok(src.includes('process.env.GLOBAL_RATE_LIMIT_MAX'));
+  assert.ok(src.includes('process.env.AUTH_RATE_LIMIT_MAX'));
+  assert.ok(src.includes('req.path === "/me"'));
+});
+
 // ---------------- BLACK-BOX TESTS ----------------
 
 async function blackBox() {
@@ -267,6 +300,30 @@ async function blackBox() {
   const unauthInterviews = await request('/api/interviews/my');
   test('HTTP interview endpoint rejects unauthenticated requests', () => {
     assert.strictEqual(unauthInterviews.response.status, 401);
+  });
+
+  const adminLogin = await request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@aviportal.com', password: 'Admin@12345' })
+  });
+  const adminToken = adminLogin.body?.token;
+
+  const badEvent = await request('/api/career-events', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {})
+    },
+    body: JSON.stringify({
+      title: 'Audit probe event',
+      description: 'Rejected before creation when the end time precedes the start time.',
+      startAt: '2026-11-01T10:00:00.000Z',
+      endAt: '2026-11-01T09:00:00.000Z'
+    })
+  });
+  test('HTTP career event creation rejects an end time before the start time', () => {
+    assert.strictEqual(badEvent.response.status, adminToken ? 400 : 401);
   });
 }
 

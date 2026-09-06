@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibilityReasons = [], onSave, onFollowCompany }) => {
+const JobCard = ({ job, onApply, applying, applied, withdrawn = false, eligible = true, eligibilityReasons = [], onSave, onFollowCompany }) => {
   const [showDetails, setShowDetails] = useState(false);
 
   return (
@@ -22,9 +22,9 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
         {typeof job.matchScore === "number" && <div className="mt-3 rounded-lg bg-blue-50 text-blue-700 px-3 py-2 text-sm"><strong>{job.matchScore}% match</strong> — {job.recommendationReason}</div>}
 
         {job.eligibility && (
-          <div className={`mt-4 rounded-lg px-3 py-2 text-sm ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-            <strong>{eligible ? "✓ Eligible" : "Not eligible"}</strong>
-            {eligible ? (job.minimumCGPA ? ` — CGPA ≥ ${job.minimumCGPA}` : "") : (eligibilityReasons.length ? ` — ${eligibilityReasons.join("; ")}` : " — Eligibility requirements are not met")}
+          <div className={`mt-4 rounded-lg px-3 py-2 text-sm ${eligible ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"}`}>
+            <strong>{eligible ? "✓ Eligible" : "Apply is open to all students"}</strong>
+            {eligible ? (job.minimumCGPA ? ` — CGPA ≥ ${job.minimumCGPA}` : "") : (eligibilityReasons.length ? ` — Requirements: ${eligibilityReasons.join("; ")} (not mandatory)` : " — You can submit your application")}
           </div>
         )}
 
@@ -51,13 +51,11 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
             View Full Details
           </button>
           <button
-            disabled={applying || applied || !eligible}
+            disabled={applying || applied || withdrawn}
             onClick={() => onApply(job._id)}
-            title={!eligible ? (eligibilityReasons.length ? eligibilityReasons.join("; ") : "You are not eligible for this job") : undefined}
-            aria-disabled={applying || applied || !eligible}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-500 text-white px-5 py-2.5 rounded-lg transition"
+            className={`bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white px-5 py-2.5 rounded-lg transition ${applied || withdrawn ? "job-application-disabled" : ""}`}
           >
-            {applied ? "Already Applied" : applying ? "Applying..." : !eligible ? "Not Eligible" : "Apply Now"}
+            {withdrawn ? "Withdrawn — Cannot Reapply" : applied ? "Already Applied" : applying ? "Applying..." : "Apply Now"}
           </button>
         </div>
       </article>
@@ -96,11 +94,11 @@ const JobCard = ({ job, onApply, applying, applied, eligible = true, eligibility
               <button type="button" onClick={() => setShowDetails(false)} className="border px-5 py-2.5 rounded-lg">Close</button>
               <button
                 type="button"
-                disabled={applying || applied || !eligible}
+                disabled={applying || applied || withdrawn}
                 onClick={() => { setShowDetails(false); onApply(job._id); }}
-                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-500"
+                className={`bg-blue-600 text-white px-5 py-2.5 rounded-lg disabled:bg-slate-400 ${applied || withdrawn ? "job-application-disabled" : ""}`}
               >
-                {applied ? "Already Applied" : applying ? "Applying..." : !eligible ? "Not Eligible" : "Apply Now"}
+                {withdrawn ? "Withdrawn — Cannot Reapply" : applied ? "Already Applied" : applying ? "Applying..." : "Apply Now"}
               </button>
             </div>
           </div>

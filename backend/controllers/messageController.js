@@ -25,8 +25,7 @@ exports.getMyConversations = async (req, res) => {
       .populate("company", "name email")
       .populate("job", "title location")
       .populate("application", "status")
-      .sort({ lastMessageAt: -1, updatedAt: -1 })
-      .lean();
+      .sort({ lastMessageAt: -1, updatedAt: -1 });
 
     return res.json({ success: true, conversations });
   } catch (error) {

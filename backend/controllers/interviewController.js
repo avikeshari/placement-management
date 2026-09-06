@@ -3,16 +3,50 @@ const Interview = require("../models/Interview");
 const sendEmail = require("../utils/sendEmail");
 const Conversation = require("../models/Conversation");
 const Notification = require("../models/Notification");
-const escapeHtml = require("../utils/escapeHtml");
 
 const isValidMeetingUrl = (value) => {
   try {
     const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+
+    // Block internal/loopback and link-local addresses that could be used for
+    // server-side request forgery when a meeting link is later opened.
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === "localhost" || hostname.endsWith(".local") || hostname.endsWith(".localhost")) return false;
+
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+      const parts = hostname.split(".").map(Number);
+      const first = parts[0];
+      const second = parts[1];
+
+      // 127.0.0.0/8 loopback
+      if (first === 127) return false;
+      // 10.0.0.0/8 private
+      if (first === 10) return false;
+      // 172.16.0.0/12 private
+      if (first === 172 && second >= 16 && second <= 31) return false;
+      // 192.168.0.0/16 private
+      if (first === 192 && second === 168) return false;
+      // 169.254.0.0/16 link-local (cloud metadata)
+      if (first === 169 && second === 254) return false;
+      // 0.0.0.0/8
+      if (first === 0) return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
 };
+
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 const buildInterviewMessage = ({ studentName, jobTitle, companyName, scheduledAt, mode, meetingUrl, location }) => {
   const dateText = new Date(scheduledAt).toLocaleDateString("en-IN", {
@@ -33,7 +67,13 @@ const buildInterviewHtml = ({ studentName, jobTitle, companyName, scheduledAt, m
     hour: "2-digit", minute: "2-digit", timeZoneName: "short"
   });
 
-  return `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b"><h2>Interview Scheduled</h2><p>Dear ${escapeHtml(studentName)},</p><p>You have been selected for an interview for the <strong>${escapeHtml(jobTitle)}</strong> position at <strong>${escapeHtml(companyName)}</strong>.</p><p><strong>Date:</strong> ${escapeHtml(dateText)}</p><p><strong>Time:</strong> ${escapeHtml(timeText)}</p><p><strong>Mode:</strong> ${mode === "online" ? "Online" : "Offline"}</p>${mode === "online" ? `<p><strong>Meeting Link:</strong><br/><a href="${escapeHtml(meetingUrl)}">${escapeHtml(meetingUrl)}</a></p>` : `<p><strong>Location:</strong> ${escapeHtml(location)}</p>`}<p>Please join the interview on time and keep the required documents ready.</p><p>Best wishes,<br/><strong>${escapeHtml(companyName)}</strong></p></div>`;
+  const safeStudent = escapeHtml(studentName);
+  const safeJob = escapeHtml(jobTitle);
+  const safeCompany = escapeHtml(companyName);
+  const safeLocation = escapeHtml(location);
+  const safeMeetingUrl = isValidMeetingUrl(meetingUrl) ? escapeHtml(meetingUrl) : "#";
+
+  return `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1e293b"><h2>Interview Scheduled</h2><p>Dear ${safeStudent},</p><p>You have been selected for an interview for the <strong>${safeJob}</strong> position at <strong>${safeCompany}</strong>.</p><p><strong>Date:</strong> ${dateText}</p><p><strong>Time:</strong> ${timeText}</p><p><strong>Mode:</strong> ${mode === "online" ? "Online" : "Offline"}</p>${mode === "online" ? `<p><strong>Meeting Link:</strong><br/><a href="${safeMeetingUrl}">${safeMeetingUrl}</a></p>` : `<p><strong>Location:</strong> ${safeLocation}</p>`}<p>Please join the interview on time and keep the required documents ready.</p><p>Best wishes,<br/><strong>${safeCompany}</strong></p></div>`;
 };
 
 const findConflicts = async ({ studentId, companyId, start, durationMinutes }) => {
@@ -236,6 +276,7 @@ exports.cancelInterview = async (req, res) => {
 
     interview.status = "cancelled";
     interview.studentResponseMessage = "The company cancelled this interview.";
+    interview.studentRespondedAt = new Date();
     await interview.save();
 
     if (interview.application && ["interview", "shortlisted"].includes(interview.application.status)) {
@@ -285,7 +326,7 @@ exports.respondToInterview = async (req, res) => {
       return res.status(409).json({ success: false, message: "You have already responded to this interview" });
     }
 
-    const cleanMessage = String(message || "").trim();
+    const cleanMessage = String(message || "").trim().slice(0, 2000);
     const defaultMessage = response === "accepted"
       ? `${interview.student.name} has accepted the interview invitation for ${interview.application?.job?.title || "the position"}.`
       : `${interview.student.name} has declined the interview invitation for ${interview.application?.job?.title || "the position"}.`;
@@ -310,7 +351,7 @@ exports.respondToInterview = async (req, res) => {
         to: interview.company.email,
         subject: `Interview ${response === "accepted" ? "Accepted" : "Declined"} - ${interview.application?.job?.title || "Placement Interview"}`,
         text: interview.studentResponseMessage,
-        html: `<h2>Interview ${response === "accepted" ? "Accepted" : "Declined"}</h2><p>${escapeHtml(interview.studentResponseMessage || "")}</p>`
+        html: `<h2>Interview ${response === "accepted" ? "Accepted" : "Declined"}</h2><p>${escapeHtml(interview.studentResponseMessage)}</p>`
       });
     } catch (emailError) {
       console.error("Interview response email failed:", emailError.message);
@@ -334,8 +375,7 @@ exports.getMyInterviews = async (req, res) => {
       .populate("student", "name email")
       .populate("company", "name email")
       .populate({ path: "application", populate: { path: "job", select: "title location description salary deadline" } })
-      .sort({ scheduledAt: 1 })
-      .lean();
+      .sort({ scheduledAt: 1 });
     return res.json({ success: true, interviews });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Unable to load interviews" });
@@ -374,5 +414,54 @@ exports.getInterviewAccess = async (req, res) => {
   }
 };
 
-exports.submitFeedback=async(req,res)=>{try{const {rating,technicalSkills,communication,recommendation,comments}=req.body;const interview=await Interview.findOne({_id:req.params.id,company:req.user._id});if(!interview)return res.status(404).json({success:false,message:"Interview not found"});if(interview.status!=="completed"&&interview.status!=="scheduled")return res.status(400).json({success:false,message:"Feedback cannot be submitted for this interview"});interview.feedback={rating:Number(rating)||null,technicalSkills:String(technicalSkills||""),communication:String(communication||""),recommendation:recommendation||"",comments:String(comments||""),submittedAt:new Date()};await interview.save();res.json({success:true,message:"Interview feedback saved",interview});}catch(e){res.status(500).json({success:false,message:"Unable to save feedback"});}};
-exports.completeInterview=async(req,res)=>{try{const interview=await Interview.findOne({_id:req.params.id,company:req.user._id});if(!interview)return res.status(404).json({success:false,message:"Interview not found"});interview.status="completed";await interview.save();res.json({success:true,interview});}catch(e){res.status(500).json({success:false,message:"Unable to complete interview"});}};
+exports.submitFeedback = async (req, res) => {
+  try {
+    const { rating, technicalSkills, communication, recommendation, comments } = req.body;
+    const interview = await Interview.findOne({ _id: req.params.id, company: req.user._id });
+    if (!interview) return res.status(404).json({ success: false, message: "Interview not found" });
+    if (interview.status !== "completed" && interview.status !== "scheduled") return res.status(400).json({ success: false, message: "Feedback cannot be submitted for this interview" });
+
+    const parsedRating = Number(rating);
+    if (!Number.isInteger(parsedRating) || parsedRating < 1 || parsedRating > 5) {
+      return res.status(400).json({ success: false, message: "Rating must be a whole number between 1 and 5" });
+    }
+
+    if (recommendation && !["hire", "hold", "reject"].includes(recommendation)) {
+      return res.status(400).json({ success: false, message: "Recommendation must be hire, hold or reject" });
+    }
+
+    const cleanComments = String(comments || "").trim().slice(0, 2000);
+    const cleanTechnical = String(technicalSkills || "").trim().slice(0, 1000);
+    const cleanCommunication = String(communication || "").trim().slice(0, 1000);
+
+    interview.feedback = {
+      rating: parsedRating,
+      technicalSkills: cleanTechnical,
+      communication: cleanCommunication,
+      recommendation: recommendation || "",
+      comments: cleanComments,
+      submittedAt: new Date()
+    };
+    await interview.save();
+    res.json({ success: true, message: "Interview feedback saved", interview });
+  } catch (e) {
+    console.error("Submit feedback error:", e);
+    res.status(500).json({ success: false, message: "Unable to save feedback" });
+  }
+};
+
+exports.completeInterview = async (req, res) => {
+  try {
+    const interview = await Interview.findOne({ _id: req.params.id, company: req.user._id });
+    if (!interview) return res.status(404).json({ success: false, message: "Interview not found" });
+    if (interview.status !== "scheduled") {
+      return res.status(400).json({ success: false, message: "Only scheduled interviews can be marked as completed" });
+    }
+    interview.status = "completed";
+    await interview.save();
+    res.json({ success: true, message: "Interview marked as completed", interview });
+  } catch (e) {
+    console.error("Complete interview error:", e);
+    res.status(500).json({ success: false, message: "Unable to complete interview" });
+  }
+};

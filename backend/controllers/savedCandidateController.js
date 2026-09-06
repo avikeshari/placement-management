@@ -4,8 +4,7 @@ const User = require('../models/User');
 exports.list = async (req, res) => {
   const rows = await SavedCandidate.find({ company: req.user._id })
     .populate('student', 'name email')
-    .sort({ createdAt: -1 })
-    .lean();
+    .sort({ createdAt: -1 });
   res.json({ success: true, candidates: rows });
 };
 exports.save = async (req, res) => {

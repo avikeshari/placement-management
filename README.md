@@ -52,13 +52,19 @@ VITE_API_URL=http://localhost:5000/api
 
 ## Demo credentials
 
-The following credentials are recommended for demonstration/testing:
+All demo accounts available in the application:
 
-| Role | Email | Password |
-|---|---|---|
-| Student | `student.demo@aviportal.com` | `Student@123` |
-| Company | `company.demo@aviportal.com` | `Company@123` |
-| Admin | `admin.demo@aviportal.com` | `Admin@123` |
+| Role | Email | Password | Created by |
+|---|---|---|---|
+| Student (primary) | `student.demo@aviportal.com` | `Student@123` | Auto-seed (`npm run seed:demo`) |
+| Student 2 | `student2.demo@aviportal.com` | `Student2@123` | Auto-seed (`npm run seed:demo`) |
+| Student 3 | `student3.demo@aviportal.com` | `Student3@123` | Auto-seed (`npm run seed:demo`) |
+| Student 4 | `student4.demo@aviportal.com` | `Student4@123` | Auto-seed (`npm run seed:demo`) |
+| Company (primary) | `company.demo@aviportal.com` | `Company@123` | Auto-seed (`npm run seed:demo`) |
+| Company 2 | `company2.demo@aviportal.com` | `Company2@123` | Auto-seed (`npm run seed:demo`) |
+| Company 3 | `company3.demo@aviportal.com` | `Company3@123` | Auto-seed (`npm run seed:demo`) |
+| Admin (demo) | `admin.demo@aviportal.com` | `Admin@123` | Auto-seed (`npm run seed:demo`) |
+| Admin (permanent production) | `admin@aviportal.com` | `Admin@12345` | Auto-created at backend startup |
 
 These credentials can be created automatically with the included demo seed script. From `backend/`, configure `MONGO_URI` and run:
 
@@ -66,7 +72,7 @@ These credentials can be created automatically with the included demo seed scrip
 npm run seed:demo
 ```
 
-The script creates/updates all three demo accounts and ensures demo student/company profiles, jobs, applications, and a sample interview exist. The backend also ensures this demo data exists automatically at startup. Do not use these passwords for a real production deployment.
+The script creates/updates all eight demo accounts (four students, three companies and the demo admin) and ensures demo student/company profiles, academic records, jobs, applications, and a sample interview exist. The backend also ensures this demo data exists automatically at startup. Do not use these passwords for a real production deployment.
 
 ## Permanent production admin
 
@@ -423,3 +429,69 @@ The browser suite checks:
 
 Test artifacts are written to `frontend/playwright-report/`; traces, screenshots, and videos are retained for failed tests.
 
+
+## Feature navigation
+
+All implemented role-specific features are now exposed through the dashboard navigation rather than requiring users to know hidden URLs.
+
+### Student navigation
+
+- Dashboard
+- Profile
+- Academic Records
+- Jobs
+- Saved Jobs
+- Applications
+- Interviews
+- Messages
+- Notifications
+- Saved Searches & Alerts
+- Following
+- Placement Drives
+- Career Events
+- Career Resources
+- Placement Checklist
+- Privacy & Preferences
+
+### Company navigation
+
+- Dashboard
+- Profile
+- Manage Jobs
+- Post Job
+- Interviews
+- Messages
+- Talent Search
+- Saved Candidates
+- Notifications
+
+Applicant actions remain contextual inside company job/application screens, including profile/resume review, notes, shortlist/reject/select, interview scheduling and messaging.
+
+### Admin navigation
+
+- Dashboard
+- Students
+- Companies / Company Database
+- Jobs
+- Applications
+- Interviews
+- Placement Drives
+- Career Events
+- Employer Verification
+- Analytics
+- Academic Records
+- Reports
+- Audit Logs
+- Profile
+
+The Admin Companies screen supports both company-database CSV export and import.
+
+Placement Drive administration supports selecting participating companies and viewing performance metrics including participants, applications, interviews, offers made, offers accepted and placement success rate.
+
+The demo seed includes both `Demo Career Fair` and `Demo Placement Drive` so benchmark tests and demonstrations have data for these features.
+
+## Dashboard performance optimization
+
+The login flow includes a non-blocking `/api/health` warm-up to reduce the perceived cold-start delay on hosted backends such as Render. Student, company, and admin dashboards use consolidated authenticated dashboard requests where applicable, reducing frontend request fan-out immediately after login. The company dashboard uses `/api/company/dashboard`; the student dashboard uses `/api/student/dashboard`; the admin dashboard uses `/api/admin/stats` as its single dashboard request.
+
+These optimizations do not change authentication, authorization, applications, interviews, messaging, academic records, placement drives, or reporting workflows.

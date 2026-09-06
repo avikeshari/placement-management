@@ -76,14 +76,30 @@ body::after {
 }
 
 button,
+a {
+  font: inherit;
+}
+
+/* Only genuinely disabled application-state buttons use the not-allowed cursor.
+   Navigation links must keep the normal pointer cursor. */
+.job-application-disabled,
+.job-application-disabled:hover,
+.job-application-disabled:disabled {
+  background: rgba(71, 85, 105, 0.72) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(100, 116, 139, 0.55) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 0.72;
+  transform: none !important;
+}
+
 input,
 textarea,
 select {
   font: inherit;
 }
 
-button,
-a,
 input,
 textarea,
 select {
@@ -94,6 +110,74 @@ select {
     box-shadow 160ms ease,
     transform 160ms ease;
 }
+
+
+
+/* Header branding: keep the portal title in the top navbar, not the sidebar. */
+.navbar-brand {
+  text-decoration: none !important;
+  color: #f8fafc !important;
+  line-height: 1;
+}
+
+.navbar-brand-title {
+  color: #f8fafc !important;
+  font-weight: 800;
+}
+
+.navbar-brand-by {
+  color: #a78bfa !important;
+  font-size: 0.82em;
+  font-weight: 700;
+}
+
+/* Transparent sidebar: keep scrolling, remove the visible scrollbar and opaque menu tiles. */
+.sidebar-shell {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  position: relative;
+}
+
+.sidebar-nav {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.sidebar-nav-link,
+.sidebar-nav-link-inactive {
+  background: transparent !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: rgba(203, 213, 225, 0.78) !important;
+}
+
+.sidebar-nav-link:hover,
+.sidebar-nav-link-inactive:hover {
+  background: rgba(148, 163, 184, 0.07) !important;
+  background-image: none !important;
+  color: rgba(226, 232, 240, 0.96) !important;
+}
+
+.sidebar-nav-link-active {
+  background: rgba(37, 99, 235, 0.13) !important;
+  background-image: none !important;
+  border-color: rgba(59, 130, 246, 0.08) !important;
+  color: rgb(96, 165, 250) !important;
+}
+
 
 /* Global dark/glass palette for the existing Tailwind UI. */
 .bg-slate-50 {
@@ -200,6 +284,19 @@ select {
 .hover\:bg-blue-600:hover {
   background: linear-gradient(100deg, #3b82f6 0%, #8b5cf6 100%) !important;
   transform: translateY(-1px);
+}
+
+/* Application state buttons must visibly look disabled even with the global gradient theme. */
+.job-application-disabled,
+.job-application-disabled:hover,
+.job-application-disabled:disabled {
+  background: rgba(71, 85, 105, 0.72) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(100, 116, 139, 0.55) !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 0.72;
+  transform: none !important;
 }
 
 input,

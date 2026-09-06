@@ -22,10 +22,7 @@ import {
   BadgeCheck,
   UserSearch,
   Star,
-  Settings,
-  Rocket,
-  Sparkles,
-  GraduationCap
+  Settings
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -34,7 +31,7 @@ const menus = {
   student: [
     { label: "Dashboard", path: "/student", icon: LayoutDashboard },
     { label: "Profile", path: "/student/profile", icon: UserRound },
-    { label: "Academic Records", path: "/student/academic", icon: GraduationCap },
+    { label: "Academic Records", path: "/student/academic", icon: BookOpen },
     { label: "Jobs", path: "/student/jobs", icon: BriefcaseBusiness },
     { label: "Saved Jobs", path: "/student/saved-jobs", icon: Bookmark },
     { label: "Applications", path: "/student/applications", icon: FileText },
@@ -43,8 +40,8 @@ const menus = {
     { label: "Notifications", path: "/student/notifications", icon: Bell },
     { label: "Saved Searches & Alerts", path: "/student/saved-searches", icon: Search },
     { label: "Following", path: "/student/following", icon: Heart },
-    { label: "Placement Drives", path: "/student/drives", icon: Rocket },
-    { label: "Career Events", path: "/student/events", icon: Sparkles },
+    { label: "Placement Drives", path: "/student/drives", icon: CalendarRange },
+    { label: "Career Events", path: "/student/events", icon: CalendarRange },
     { label: "Career Resources", path: "/student/resources", icon: BookOpen },
     { label: "Placement Checklist", path: "/student/resources/checklist", icon: ClipboardCheck },
     { label: "Privacy & Preferences", path: "/student/settings", icon: Settings }
@@ -67,8 +64,8 @@ const menus = {
     { label: "Jobs", path: "/admin/jobs", icon: BriefcaseBusiness },
     { label: "Applications", path: "/admin/applications", icon: FileText },
     { label: "Interviews", path: "/admin/interviews", icon: CalendarDays },
-    { label: "Placement Drives", path: "/admin/drives", icon: Rocket },
-    { label: "Career Events", path: "/admin/events", icon: Sparkles },
+    { label: "Placement Drives", path: "/admin/drives", icon: CalendarRange },
+    { label: "Career Events", path: "/admin/events", icon: CalendarRange },
     { label: "Employer Verification", path: "/admin/verification", icon: BadgeCheck },
     { label: "Analytics", path: "/admin/analytics", icon: BarChart3 },
     { label: "Academic Records", path: "/admin/academic-import", icon: Upload },
@@ -83,24 +80,25 @@ const Sidebar = () => {
   const items = menus[user?.role] || [];
 
   return (
-    <aside className="bg-white border-r w-full md:w-64 md:min-h-[calc(100vh-4rem)]">
+    <aside className="sidebar-shell w-full md:w-64 md:min-h-[calc(100vh-4rem)]">
       <nav
         aria-label={`${user?.role || "user"} navigation`}
         data-testid="sidebar-nav"
-        className="flex md:flex-col overflow-x-auto md:overflow-y-auto gap-1 p-3 md:max-h-[calc(100vh-4rem)]"
+        className="sidebar-nav flex md:flex-col overflow-x-auto md:overflow-y-auto gap-1 p-3 md:max-h-[calc(100vh-4rem)]"
       >
         {items.map(({ label, path, icon: Icon }, index) => (
           <NavLink
             key={`${path}-${index}`}
             to={path}
             end={path === "/student" || path === "/company" || path === "/admin"}
-            className={({ isActive }) => `flex items-center gap-3 whitespace-nowrap px-4 py-3 rounded-lg transition ${isActive ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-600 hover:bg-slate-50"}`}
+            className={({ isActive }) => `sidebar-nav-link flex items-center gap-3 whitespace-nowrap px-4 py-3 rounded-lg transition ${isActive ? "sidebar-nav-link-active font-medium" : "sidebar-nav-link-inactive"}`}
           >
             <Icon size={18} />
             {label}
           </NavLink>
         ))}
       </nav>
+
     </aside>
   );
 };

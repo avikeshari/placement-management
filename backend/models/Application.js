@@ -30,6 +30,16 @@ const applicationSchema = new mongoose.Schema(
     offerUpdatedAt: { type: Date, default: null },
     offerExpiresAt: { type: Date, default: null },
     appliedAt: { type: Date, default: Date.now },
+    // Derived field used to enforce a single "selected" placement offer per
+    // student at the database level. It is set to the student id only while
+    // the application status is "selected"; the unique partial index below
+    // guarantees at most one selected offer per student even under concurrent
+    // status updates (eliminates the TOCTOU race in the controller).
+    selectedOfferKey: {
+      type: String,
+      default: null,
+      select: false
+    },
     resume: {
       url: String,
       downloadUrl: String,
@@ -45,5 +55,9 @@ const applicationSchema = new mongoose.Schema(
 
 applicationSchema.index({ student: 1, job: 1 }, { unique: true });
 applicationSchema.index({ status: 1, createdAt: -1 });
+applicationSchema.index(
+  { selectedOfferKey: 1 },
+  { unique: true, partialFilterExpression: { selectedOfferKey: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Application", applicationSchema);
