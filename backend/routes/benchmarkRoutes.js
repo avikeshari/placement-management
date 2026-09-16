@@ -1,0 +1,15 @@
+const express=require("express");
+const protect=require("../middleware/authMiddleware");
+const authorize=require("../middleware/roleMiddleware");
+const c=require("../controllers/benchmarkController");
+const router=express.Router();
+router.use(protect);
+router.get("/saved-jobs",authorize("student"),c.mySavedJobs); router.post("/saved-jobs/:jobId",authorize("student"),c.saveJob); router.delete("/saved-jobs/:jobId",authorize("student"),c.unsaveJob);
+router.get("/saved-searches",authorize("student"),c.mySavedSearches); router.post("/saved-searches",authorize("student"),c.saveSearch); router.delete("/saved-searches/:id",authorize("student"),c.deleteSavedSearch);
+router.get("/follows",authorize("student"),c.myFollows); router.post("/companies/:companyId/follow",authorize("student"),c.followCompany); router.delete("/companies/:companyId/follow",authorize("student"),c.unfollowCompany);
+router.patch("/privacy",authorize("student"),c.updatePrivacy);
+router.get("/notifications",c.notifications); router.patch("/notifications/:id/read",c.markNotification);
+router.get("/events",authorize("student","company","admin"),c.listEvents); router.post("/events",authorize("admin"),c.createEvent); router.post("/events/:id/register",authorize("student","company"),c.registerEvent); router.delete("/events/:id/register",authorize("student","company"),c.unregisterEvent);
+router.get("/talent",authorize("company"),c.companySearch); router.get("/talent/:studentId/notes",authorize("company"),c.candidateNotes); router.post("/talent/:studentId/notes",authorize("company"),c.addCandidateNote);
+router.patch("/companies/:id/verification",authorize("admin"),c.verifyCompany); router.get("/audit-logs",authorize("admin"),c.adminAuditLogs); router.get("/career-resources",authorize("student","company"),c.careerResources);
+module.exports=router;

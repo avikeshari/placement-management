@@ -1,0 +1,477 @@
+const dotenv = require("dotenv");
+dotenv.config();
+
+const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const Profile = require("../models/Profile");
+const Job = require("../models/Job");
+const Application = require("../models/Application");
+const Interview = require("../models/Interview");
+const Conversation = require("../models/Conversation");
+const Message = require("../models/Message");
+const AcademicRecord = require("../models/AcademicRecord");
+const Event = require("../models/Event");
+const PlacementDrive = require("../models/PlacementDrive");
+const connectDB = require("../config/db");
+
+const users = [
+  { name: "Demo Student", email: "student.demo@aviportal.com", password: "Student@123", role: "student" },
+  { name: "Demo Company", email: "company.demo@aviportal.com", password: "Company@123", role: "company" },
+  { name: "Demo Admin", email: "admin.demo@aviportal.com", password: "Admin@123", role: "admin" },
+  { name: "Demo Student 2", email: "student2.demo@aviportal.com", password: "Student2@123", role: "student" },
+  { name: "Demo Student 3", email: "student3.demo@aviportal.com", password: "Student3@123", role: "student" },
+  { name: "Demo Student 4", email: "student4.demo@aviportal.com", password: "Student4@123", role: "student" },
+  { name: "Demo Company 2", email: "company2.demo@aviportal.com", password: "Company2@123", role: "company" },
+  { name: "Demo Company 3", email: "company3.demo@aviportal.com", password: "Company3@123", role: "company" }
+];
+
+const demoResumeUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+
+const studentDemoData = [
+  {
+    userEmail: "student.demo@aviportal.com",
+    enrollmentNumber: "DEMO-CSE-001",
+    phone: "+91 98765 43210",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Computer Science and Engineering",
+    graduationYear: 2027,
+    cgpa: 8.7,
+    backlogs: 0,
+    profileSkills: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
+    academicSkills: ["JavaScript", "React", "Node.js", "MongoDB", "Git", "HTML", "CSS", "REST API", "Express"],
+    location: "Prayagraj, Uttar Pradesh",
+    resumeName: "demo-student-resume.pdf"
+  },
+  {
+    userEmail: "student2.demo@aviportal.com",
+    enrollmentNumber: "DEMO-IT-002",
+    phone: "+91 98765 43211",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Information Technology",
+    graduationYear: 2027,
+    cgpa: 8.1,
+    backlogs: 0,
+    profileSkills: ["Java", "Spring Boot", "SQL", "Git", "REST API"],
+    academicSkills: ["Java", "Spring Boot", "SQL", "Git", "REST API"],
+    location: "Lucknow, Uttar Pradesh",
+    resumeName: "student2-demo-resume.pdf"
+  },
+  {
+    userEmail: "student3.demo@aviportal.com",
+    enrollmentNumber: "DEMO-ECE-003",
+    phone: "+91 98765 43212",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Electronics and Communication Engineering",
+    graduationYear: 2026,
+    cgpa: 7.8,
+    backlogs: 0,
+    profileSkills: ["Python", "SQL", "Excel", "Power BI", "Data Analysis"],
+    academicSkills: ["Python", "SQL", "Excel", "Power BI", "Data Analysis"],
+    location: "Jaipur, Rajasthan",
+    resumeName: "student3-demo-resume.pdf"
+  },
+  {
+    userEmail: "student4.demo@aviportal.com",
+    enrollmentNumber: "DEMO-CSE-004",
+    phone: "+91 98765 43213",
+    college: "ABC Institute of Technology",
+    course: "B.Tech",
+    branch: "Computer Science and Engineering",
+    graduationYear: 2028,
+    cgpa: 7.2,
+    backlogs: 1,
+    profileSkills: ["HTML", "CSS", "JavaScript", "Figma", "Git"],
+    academicSkills: ["HTML", "CSS", "JavaScript", "Figma", "Git"],
+    location: "Kanpur, Uttar Pradesh",
+    resumeName: "student4-demo-resume.pdf"
+  }
+];
+
+const companyDemoData = [
+  {
+    userEmail: "company.demo@aviportal.com",
+    phone: "+91 98765 12345",
+    website: "https://example.com",
+    industry: "Information Technology",
+    description: "Demo technology company hiring students for software and graduate roles.",
+    location: "Bengaluru, Karnataka"
+  },
+  {
+    userEmail: "company2.demo@aviportal.com",
+    phone: "+91 98765 22345",
+    website: "https://example.com/analytics",
+    industry: "Data & Analytics",
+    description: "Demo analytics organization recruiting graduates for data and business roles.",
+    location: "Pune, Maharashtra"
+  },
+  {
+    userEmail: "company3.demo@aviportal.com",
+    phone: "+91 98765 32345",
+    website: "https://example.com/fintech",
+    industry: "Financial Technology",
+    description: "Demo fintech employer with software engineering and product opportunities.",
+    location: "Hyderabad, Telangana"
+  }
+];
+
+async function upsertDemoUser(demo) {
+  const password = await bcrypt.hash(demo.password, 12);
+  return User.findOneAndUpdate(
+    { email: demo.email },
+    { $set: { name: demo.name, email: demo.email, password, role: demo.role, isActive: true } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+}
+
+function futureDate(days, hour = 23, minute = 59) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(hour, minute, 0, 0);
+  return date;
+}
+
+async function upsertDemoJob(companyId, data) {
+  return Job.findOneAndUpdate(
+    { company: companyId, title: data.title },
+    {
+      $set: {
+        ...data,
+        company: companyId,
+        status: "open",
+        isDeleted: false,
+        deletedAt: null
+      }
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+}
+
+async function ensureApplication({ studentId, job, status }) {
+  const application = await Application.findOneAndUpdate(
+    { student: studentId, job: job._id },
+    {
+      $set: {
+        status,
+        statusUpdatedAt: new Date(),
+        resume: {
+          url: demoResumeUrl,
+          downloadUrl: "",
+          publicId: "",
+          originalName: "demo-student-resume.pdf",
+          resourceType: "",
+          deliveryType: "",
+          format: "pdf"
+        }
+      },
+      $setOnInsert: {
+        student: studentId,
+        job: job._id,
+        appliedAt: new Date()
+      }
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return application;
+}
+
+async function removeApplicationAndInterview(studentId, jobId) {
+  const application = await Application.findOne({ student: studentId, job: jobId }).select("_id");
+  if (!application) return;
+  const conversations = await Conversation.find({ application: application._id }).select("_id");
+  const conversationIds = conversations.map((item) => item._id);
+  if (conversationIds.length) await Message.deleteMany({ conversation: { $in: conversationIds } });
+  await Interview.deleteMany({ application: application._id });
+  await Conversation.deleteMany({ application: application._id });
+  await Application.deleteOne({ _id: application._id });
+}
+
+async function seedDemoData({ reset = false } = {}) {
+  const created = {};
+  for (const demo of users) {
+    created[demo.email] = await upsertDemoUser(demo);
+  }
+  const student = created["student.demo@aviportal.com"];
+  const company = created["company.demo@aviportal.com"];
+
+  for (const data of studentDemoData) {
+    const user = created[data.userEmail];
+    await Profile.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          phone: data.phone,
+          college: data.college,
+          course: data.course,
+          branch: data.branch,
+          graduationYear: data.graduationYear,
+          cgpa: data.cgpa,
+          skills: data.profileSkills,
+          location: data.location
+        },
+        $setOnInsert: { user: user._id }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await AcademicRecord.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          user: user._id,
+          studentEmail: user.email,
+          enrollmentNumber: data.enrollmentNumber,
+          college: data.college,
+          course: data.course,
+          branch: data.branch,
+          graduationYear: data.graduationYear,
+          cgpa: data.cgpa,
+          backlogs: data.backlogs,
+          skills: data.academicSkills
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    const userProfile = await Profile.findOne({ user: user._id });
+    if (!userProfile?.resume?.url) {
+      await Profile.findOneAndUpdate(
+        { user: user._id },
+        {
+          $set: {
+            resume: {
+              url: demoResumeUrl,
+              downloadUrl: "",
+              publicId: "",
+              originalName: data.resumeName,
+              resourceType: "",
+              deliveryType: "",
+              format: "pdf"
+            }
+          }
+        }
+      );
+    }
+  }
+
+  for (const data of companyDemoData) {
+    const user = created[data.userEmail];
+    await Profile.findOneAndUpdate(
+      { user: user._id },
+      {
+        $set: {
+          phone: data.phone,
+          website: data.website,
+          industry: data.industry,
+          description: data.description,
+          location: data.location
+        },
+        $setOnInsert: { user: user._id }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
+
+  if (reset) {
+    const jobs = await Job.find({ company: company._id }).select("_id");
+    const jobIds = jobs.map((job) => job._id);
+    if (jobIds.length) {
+      const applications = await Application.find({ job: { $in: jobIds } }).select("_id");
+      const applicationIds = applications.map((item) => item._id);
+      if (applicationIds.length) {
+        const conversations = await Conversation.find({ application: { $in: applicationIds } }).select("_id");
+        const conversationIds = conversations.map((item) => item._id);
+        if (conversationIds.length) await Message.deleteMany({ conversation: { $in: conversationIds } });
+        await Interview.deleteMany({ application: { $in: applicationIds } });
+        await Conversation.deleteMany({ application: { $in: applicationIds } });
+      }
+      await Application.deleteMany({ job: { $in: jobIds } });
+      await Job.deleteMany({ _id: { $in: jobIds } });
+    }
+  }
+
+  const commonEligibility = {
+    minimumCGPA: 7.5,
+    maxBacklogs: 0,
+    eligibleBranches: ["Computer Science and Engineering"],
+    minimumGraduationYear: 2026,
+    maximumGraduationYear: 2028
+  };
+
+  const jobs = {};
+
+  jobs.frontend = await upsertDemoJob(company._id, {
+    title: "Frontend Developer",
+    description: "Build responsive React interfaces, collaborate with backend engineers, write maintainable components, and participate in code reviews.",
+    location: "Bengaluru / Hybrid",
+    salary: 900000,
+    ...commonEligibility,
+    requiredSkills: ["React", "JavaScript", "HTML", "CSS", "Git"],
+    deadline: futureDate(14)
+  });
+
+  jobs.backend = await upsertDemoJob(company._id, {
+    title: "Backend Developer",
+    description: "Develop REST APIs using Node.js and Express, work with MongoDB, implement authentication, and support production deployments.",
+    location: "Remote",
+    salary: 1000000,
+    ...commonEligibility,
+    minimumCGPA: 8,
+    requiredSkills: ["Node.js", "Express", "MongoDB", "REST API", "Git"],
+    deadline: futureDate(21)
+  });
+
+  jobs.fullStack = await upsertDemoJob(company._id, {
+    title: "Full Stack Developer",
+    description: "Work across React frontend and Node.js backend services, build APIs, integrate databases, and deliver complete web features.",
+    location: "Bengaluru / Hybrid",
+    salary: 1100000,
+    ...commonEligibility,
+    minimumCGPA: 7.5,
+    requiredSkills: ["React", "Node.js", "JavaScript", "MongoDB"],
+    deadline: futureDate(28)
+  });
+
+  jobs.qa = await upsertDemoJob(company._id, {
+    title: "QA Engineer",
+    description: "Design test cases, perform functional testing, report defects, and help maintain software quality across web applications.",
+    location: "Pune / Hybrid",
+    salary: 700000,
+    ...commonEligibility,
+    requiredSkills: ["Testing", "JavaScript", "Git"],
+    deadline: futureDate(35)
+  });
+
+  jobs.data = await upsertDemoJob(company._id, {
+    title: "Data Analyst",
+    description: "Analyze business data, prepare dashboards, identify trends, and communicate actionable insights to product and business teams.",
+    location: "Remote",
+    salary: 800000,
+    ...commonEligibility,
+    requiredSkills: ["SQL", "Excel", "Python"],
+    deadline: futureDate(42)
+  });
+
+  // Clean up applications from demo jobs that should remain unapplied.
+  await removeApplicationAndInterview(student._id, jobs.qa._id);
+  await removeApplicationAndInterview(student._id, jobs.data._id);
+
+  // Keep one ordinary applied application.
+  const frontendApplication = await ensureApplication({
+    studentId: student._id,
+    job: jobs.frontend,
+    status: "applied"
+  });
+
+  // Keep one shortlisted application without an interview so the company can test scheduling.
+  const fullStackApplication = await ensureApplication({
+    studentId: student._id,
+    job: jobs.fullStack,
+    status: "shortlisted"
+  });
+
+  // Keep one interview-ready application with an existing interview.
+  const backendApplication = await ensureApplication({
+    studentId: student._id,
+    job: jobs.backend,
+    status: "interview"
+  });
+
+  // Remove any stale interviews for the frontend and full-stack demo applications.
+  await Interview.deleteMany({ application: { $in: [frontendApplication._id, fullStackApplication._id] } });
+
+  // Refresh the existing backend demo interview so it is always in the future.
+  await Interview.deleteMany({ application: backendApplication._id });
+  const oldConversation = await Conversation.findOne({ application: backendApplication._id }).select("_id");
+  if (oldConversation) {
+    await Message.deleteMany({ conversation: oldConversation._id });
+    await Conversation.deleteOne({ _id: oldConversation._id });
+  }
+
+  const interviewDate = futureDate(3, 11, 0);
+  const formattedDate = interviewDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+  const formattedTime = interviewDate.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  const interview = await Interview.create({
+    application: backendApplication._id,
+    student: student._id,
+    company: company._id,
+    scheduledAt: interviewDate,
+    durationMinutes: 30,
+    mode: "online",
+    meetingUrl: "https://meet.google.com/demo-placement-interview",
+    location: "",
+    message: `Dear Demo Student,\n\nYou have been selected for an interview for the Backend Developer position at Demo Company.\n\nDate: ${formattedDate}\nTime: ${formattedTime}\nMode: Online\nMeeting Link: https://meet.google.com/demo-placement-interview\n\nPlease join the interview on time and keep the required documents ready.\n\nBest wishes,\nDemo Company`,
+    status: "scheduled"
+  });
+
+  const conversation = await Conversation.create({
+    application: backendApplication._id,
+    student: student._id,
+    company: company._id,
+    job: jobs.backend._id,
+    lastMessage: "Hello! We can use this chat for interview-related communication.",
+    lastMessageAt: new Date()
+  });
+
+  await Message.create({
+    conversation: conversation._id,
+    sender: company._id,
+    body: "Hello Demo Student! We can use this chat for interview-related communication. Please let us know if you have any questions before the interview."
+  });
+
+  const eventStart = futureDate(7, 10, 0);
+  const eventEnd = futureDate(7, 15, 0);
+  await Event.findOneAndUpdate(
+    { title: "Demo Career Fair" },
+    { $set: { title: "Demo Career Fair", description: "Demo career fair for placement testing and employer networking.", type: "career_fair", startAt: eventStart, endAt: eventEnd, location: "ABC Institute Auditorium", meetingUrl: "", companies: [company._id], capacity: 200, status: "published" } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  const driveStart = futureDate(10, 9, 0);
+  const driveEnd = futureDate(10, 17, 0);
+  await PlacementDrive.findOneAndUpdate(
+    { name: "Demo Placement Drive" },
+    { $set: { name: "Demo Placement Drive", description: "Demo placement drive with participating company and student registration.", startAt: driveStart, endAt: driveEnd, location: "ABC Institute Placement Cell", companies: [company._id], status: "planned" } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return {
+    student,
+    company,
+    jobs,
+    frontendApplication,
+    fullStackApplication,
+    backendApplication,
+    interview
+  };
+}
+
+module.exports = seedDemoData;
+
+if (require.main === module) {
+  (async () => {
+    try {
+      await connectDB();
+      await seedDemoData({ reset: process.argv.includes("--reset") });
+      console.log("Demo users and demo placement data are ready (8 demo accounts: 4 students, 3 companies, 1 admin).");
+      console.log("Demo flow: 1 applied, 1 shortlisted without interview, 1 interview scheduled, 2 unapplied jobs.");
+    } catch (error) {
+      console.error("Demo seed failed:", error);
+      process.exitCode = 1;
+    } finally {
+      await mongoose.connection.close();
+    }
+  })();
+}

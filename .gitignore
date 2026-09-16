@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+.env.local
+.env.production
+dist/
+.DS_Store
+*.log
+TESTING-REPORT.txt

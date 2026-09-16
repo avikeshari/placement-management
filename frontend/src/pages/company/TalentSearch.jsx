@@ -1,0 +1,117 @@
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
+import toast from "react-hot-toast";
+import Loader from "../../components/Loader";
+import EmptyState from "../../components/EmptyState";
+import PromptDialog from "../../components/PromptDialog";
+
+export default function TalentSearch() {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [noteStudent, setNoteStudent] = useState(null);
+
+  const search = async () => {
+    try {
+      setLoading(true);
+      setRows((await api.get("/candidate-search", { params: { q } })).data.students || []);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Unable to search talent");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Only fire the initial search when the input is non-empty, so the page
+  // loads without a confusing full-list scrape on mount.
+  useEffect(() => {
+    if (q.trim()) {
+      const timer = setTimeout(search, 400);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const noteStudentId = noteStudent?._id || null;
+
+  const saveNote = async (note) => {
+    if (!noteStudentId || !note.trim()) return;
+    try {
+      await api.post(`/candidate-search/${noteStudentId}/notes`, { note: note.trim() });
+      toast.success("Note saved");
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Unable to save note");
+    } finally {
+      setNoteStudent(null);
+    }
+  };
+
+  return (
+    <section>
+      <h1 className="text-3xl font-bold mb-6">Talent Search</h1>
+      <div className="flex gap-3 mb-6">
+        <label className="flex-1">
+          <span className="sr-only">Search skills, branch or job interest</span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Skills, branch or job interest"
+            className="border rounded-lg px-3 py-2 w-full"
+          />
+        </label>
+        <button onClick={search} className="bg-blue-600 text-white rounded-lg px-5">Search</button>
+      </div>
+
+      {loading ? (
+        <Loader text="Searching candidates..." />
+      ) : !rows.length ? (
+        <EmptyState title="No candidates found" message="Try a different search term." />
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {rows.map((s) => (
+            <div className="bg-white border rounded-2xl p-5" key={s._id}>
+              <h2 className="font-semibold">{s.name}</h2>
+              <p className="text-slate-500">{s.email}</p>
+              <div className="mt-3 flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.post(`/saved-candidates/${s._id}`);
+                      toast.success("Candidate saved");
+                    } catch (e) {
+                      toast.error(e.response?.data?.message || "Unable to save candidate");
+                    }
+                  }}
+                  className="text-blue-600 text-sm"
+                >
+                  + Save candidate
+                </button>
+                <button onClick={() => setNoteStudent(s)} className="text-slate-600 text-sm">
+                  + Add private note
+                </button>
+              </div>
+              <p className="mt-2">{s.profile?.branch || "Branch not provided"} · {s.profile?.graduationYear || "—"}</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {(s.profile?.skills || []).map((x) => (
+                  <span className="text-xs bg-slate-100 rounded-full px-2 py-1" key={x}>{x}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <PromptDialog
+        open={Boolean(noteStudent)}
+        title={`Add private note - ${noteStudent?.name || "candidate"}`}
+        message="This note is visible only to your company."
+        placeholder="Private note..."
+        maxLength={2000}
+        textarea
+        confirmLabel="Save Note"
+        onConfirm={saveNote}
+        onCancel={() => setNoteStudent(null)}
+      />
+    </section>
+  );
+}
