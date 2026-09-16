@@ -325,34 +325,44 @@ const Applicants = () => {
                   </>
                 )}
 
-                {[
-                  "shortlisted",
-                  "selected"
-                ].includes(application.status) && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={updating === application._id}
-                      onClick={() => openSchedule(application)}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Schedule Interview
-                    </button>
+                {application.status === "shortlisted" && (
+                  <button
+                    type="button"
+                    disabled={updating === application._id}
+                    onClick={() => openSchedule(application)}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Schedule Interview
+                  </button>
+                )}
 
-                    {application.status === "shortlisted" && (
-                      <button
-                        onClick={() =>
-                          confirmUpdate(
-                            application,
-                            "selected"
-                          )
-                        }
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg"
-                      >
-                        Select
-                      </button>
-                    )}
-                  </>
+                {["shortlisted", "interview"].includes(application.status) && (
+                  <button
+                    onClick={() =>
+                      confirmUpdate(
+                        application,
+                        "selected"
+                      )
+                    }
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Select
+                  </button>
+                )}
+
+                {["shortlisted", "interview"].includes(application.status) && (
+                  <button
+                    disabled={updating === application._id}
+                    onClick={() =>
+                      confirmUpdate(
+                        application,
+                        "rejected"
+                      )
+                    }
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reject
+                  </button>
                 )}
               </div>
             </div>

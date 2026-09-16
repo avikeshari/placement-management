@@ -30,7 +30,7 @@ exports.applyForJob = async (req, res) => {
     const [profile, existingApplication, existingOffer] = await Promise.all([
       Profile.findOne({ user: req.user._id }),
       Application.findOne({ student: req.user._id, job: job._id }),
-      Application.findOne({ student: req.user._id, status: "selected" })
+      Application.findOne({ student: req.user._id, status: "selected", offerStatus: { $ne: "declined" } })
     ]);
 
     if (!profile?.resume?.url) {
@@ -230,7 +230,7 @@ exports.updateApplicationStatus = async (req, res) => {
 
     const transitions = {
       applied: ["applied", "shortlisted", "rejected"],
-      shortlisted: ["shortlisted", "interview", "selected", "rejected"],
+      shortlisted: ["shortlisted", "selected", "rejected"],
       interview: ["interview", "selected", "rejected"],
       selected: ["selected"],
       rejected: ["rejected"],

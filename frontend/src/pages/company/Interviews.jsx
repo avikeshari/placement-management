@@ -166,7 +166,7 @@ const Interviews = () => {
                   </p>
                 </div>
 
-                <span className="inline-flex w-fit rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-sm font-medium capitalize">
+                <span className="inline-flex w-fit h-fit rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-sm font-medium capitalize">
                   {interview.status || "scheduled"}
                 </span>
               </div>

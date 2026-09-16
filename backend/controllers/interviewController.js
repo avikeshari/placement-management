@@ -139,8 +139,8 @@ exports.scheduleInterview = async (req, res) => {
     }
     if (!application.student) return res.status(400).json({ success: false, message: "Candidate account is unavailable" });
 
-    if (!["shortlisted", "selected"].includes(application.status)) {
-      return res.status(400).json({ success: false, message: "Student must be shortlisted or selected before scheduling an interview" });
+    if (application.status !== "shortlisted") {
+      return res.status(400).json({ success: false, message: "Student must be shortlisted before scheduling an interview" });
     }
 
     const existingInterview = await Interview.findOne({ application: application._id });

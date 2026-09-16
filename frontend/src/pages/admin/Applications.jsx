@@ -12,7 +12,8 @@ const STATUS_OPTIONS = [
   "shortlisted",
   "interview",
   "selected",
-  "rejected"
+  "rejected",
+  "withdrawn"
 ];
 
 const Applications = () => {

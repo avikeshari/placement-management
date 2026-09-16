@@ -50,7 +50,7 @@ exports.getStats = async (req, res) => {
       Application.countDocuments({ status: "selected" }),
       Application.countDocuments({ status: "rejected" }),
       Application.countDocuments({ status: "selected", offerStatus: "accepted" }),
-      Application.distinct("student", { status: "selected" }),
+      Application.distinct("student", { status: "selected", offerStatus: { $ne: "declined" } }),
       Job.aggregate([
         { $match: { isDeleted: false, salary: { $type: "number", $gt: 0 } } },
         {
@@ -223,14 +223,14 @@ exports.getAnalytics = async (req, res) => {
         { $limit: 12 }
       ]),
       Application.aggregate([
-        { $match: { status: "selected" } },
+        { $match: { status: "selected", offerStatus: { $ne: "declined" } } },
         { $lookup: { from: "profiles", localField: "student", foreignField: "user", as: "profile" } },
         { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
         { $group: { _id: { $ifNull: ["$profile.branch", "Unknown"] }, count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]),
       Application.aggregate([
-        { $match: { status: "selected" } },
+        { $match: { status: "selected", offerStatus: { $ne: "declined" } } },
         { $lookup: { from: "jobs", localField: "job", foreignField: "_id", as: "job" } },
         { $unwind: "$job" },
         { $lookup: { from: "users", localField: "job.company", foreignField: "_id", as: "company" } },
@@ -396,7 +396,7 @@ exports.getReport = async (req, res) => {
     }
 
     if (type === "placements") {
-      const applications = await Application.find({ status: "selected" })
+      const applications = await Application.find({ status: "selected", offerStatus: { $ne: "declined" } })
         .populate("student", "name email")
         .populate({ path: "job", select: "title salary", populate: { path: "company", select: "name" } })
         .lean();
