@@ -189,7 +189,7 @@ exports.withdrawApplication = async (req, res) => {
 
     try {
       const studentName = req.user.name || "The student";
-      await sendEmail({
+      sendEmail({
         to: (await User.findById(application.job.company).select("email"))?.email,
         subject: `Application Withdrawn - ${application.job.title}`,
         text: `${studentName} has withdrawn their application for ${application.job.title}.${previousStatus === "interview" ? " Any scheduled interview has also been cancelled." : ""}`,
@@ -296,7 +296,7 @@ exports.updateApplicationStatus = async (req, res) => {
     try { await Notification.create({ user: application.student._id, title: "Application status updated", message: `Your application for ${application.job.title} is now ${status}.`, type: "application", link: "/student/applications" }); } catch (n) { console.error("Status notification failed:", n.message); }
 
     try {
-      await sendEmail({
+      sendEmail({
         to: application.student.email,
         subject: "Application Status Updated",
         text: `Your application for ${application.job.title} is now ${status}.`,

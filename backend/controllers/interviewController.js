@@ -232,7 +232,7 @@ exports.scheduleInterview = async (req, res) => {
     try { await Notification.create({ user: application.student._id, title: "Interview scheduled", message: `Your interview for ${application.job.title} has been scheduled.`, type: "interview", link: "/student/interviews" }); } catch (n) { console.error("Interview notification failed:", n.message); }
 
     try {
-      await sendEmail({
+      sendEmail({
         to: application.student.email,
         subject: `Interview Scheduled - ${application.job.title}`,
         text: message,
@@ -286,7 +286,7 @@ exports.cancelInterview = async (req, res) => {
     }
 
     try {
-      await sendEmail({
+      sendEmail({
         to: interview.student.email,
         subject: `Interview Cancelled - ${interview.application?.job?.title || "Placement Interview"}`,
         text: `The company has cancelled your scheduled interview for ${interview.application?.job?.title || "the position"}. Please check your Placement Portal for further updates.`,
@@ -347,7 +347,7 @@ exports.respondToInterview = async (req, res) => {
     await interview.save();
 
     try {
-      await sendEmail({
+      sendEmail({
         to: interview.company.email,
         subject: `Interview ${response === "accepted" ? "Accepted" : "Declined"} - ${interview.application?.job?.title || "Placement Interview"}`,
         text: interview.studentResponseMessage,

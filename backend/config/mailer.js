@@ -10,6 +10,11 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
   },
+  // Cap SMTP connection/handshake timeouts so a slow or unreachable mail
+  // server can never block user-facing API responses for long.
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 20000,
   // Always validate the SMTP server certificate so an attacker cannot
   // perform a man-in-the-middle attack and capture credentials.
   tls: {

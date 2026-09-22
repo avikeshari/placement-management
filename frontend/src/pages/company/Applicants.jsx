@@ -14,6 +14,7 @@ const Applicants = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
   const [schedule, setSchedule] = useState(null);
+  const [scheduling, setScheduling] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [studentProfile, setStudentProfile] = useState(null);
   const [resumeLoading, setResumeLoading] = useState(null);
@@ -180,6 +181,8 @@ const Applicants = () => {
     }
 
     try {
+      setScheduling(true);
+
       await api.post("/interviews", {
         applicationId: schedule.applicationId,
         scheduledAt: scheduledAt.toISOString(),
@@ -207,6 +210,8 @@ const Applicants = () => {
           "Unable to schedule interview."
         )
       );
+    } finally {
+      setScheduling(false);
     }
   };
 
@@ -584,16 +589,20 @@ const Applicants = () => {
                 onClick={() =>
                   setSchedule(null)
                 }
-                className="border px-4 py-2 rounded-lg"
+                disabled={scheduling}
+                className="border px-4 py-2 rounded-lg disabled:opacity-50"
               >
                 Cancel
               </button>
 
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+                disabled={scheduling}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Schedule Interview
+                {scheduling
+                  ? "Scheduling..."
+                  : "Schedule Interview"}
               </button>
             </div>
           </form>
